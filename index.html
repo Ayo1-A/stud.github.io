@@ -1,0 +1,1982 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gospel Prophecy - Enterprise Admin Panel</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    
+    :root { --primary: #8b5cf6; --primary-dark: #7c3aed; }
+
+    body { font-family: 'Inter', sans-serif; background-color: #050a14; color: #e2e8f0; overflow: hidden; }
+
+    .glass {
+      background: rgba(15, 23, 42, 0.5);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(30, 41, 59, 0.8);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Custom Scrollbar */
+    .scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .scrollbar::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.5); border-radius: 4px; }
+    .scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    .scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+    /* Custom Toggle Switch */
+    .toggle {
+      appearance: none; width: 44px; height: 24px; background: #334155;
+      border-radius: 24px; position: relative; cursor: pointer; outline: none; transition: all 0.3s ease;
+      border: 1px solid #475569;
+    }
+    .toggle::after {
+      content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px;
+      background: white; border-radius: 50%; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+    .toggle:checked { background: var(--primary); border-color: var(--primary-dark); }
+    .toggle:checked::after { left: 22px; }
+
+    /* Navigation & Animations */
+    .nav-item { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+    .nav-item.active { background: rgba(139, 92, 246, 0.15); color: #a78bfa; border-right: 3px solid var(--primary); }
+    .nav-item:hover { transform: translateX(4px); }
+    
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    .sidebar-transition { transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); will-change: transform; }
+
+    /* Action Buttons */
+    .btn { transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s; will-change: transform; }
+    .btn:active:not(:disabled) { transform: scale(0.96); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    /* Chat Bubbles Upgraded for Integrity */
+    .msg-bubble { max-width: 85%; padding: 12px 16px; border-radius: 16px; font-size: 13.5px; line-height: 1.6; position: relative; word-break: break-word; white-space: pre-wrap; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+    .msg-admin { align-self: flex-end; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; border-bottom-right-radius: 4px; }
+    .msg-user { align-self: flex-start; background: #1e293b; color: #f8fafc; border-bottom-left-radius: 4px; border: 1px solid #334155; }
+    .msg-time { font-size: 10px; margin-top: 6px; opacity: 0.7; display: block; text-align: right; font-weight: 600; }
+    .chat-user-item { transition: all 0.2s ease; }
+    .chat-user-item.active { background: rgba(139, 92, 246, 0.1); border-left: 3px solid var(--primary); }
+    .chat-user-item.unread { font-weight: 700; background: rgba(239, 68, 68, 0.05); border-left: 3px solid #ef4444; }
+
+    /* Toast Notification System */
+    .toast-container { position: fixed; top: 24px; right: 24px; z-index: 99999; display: flex; flex-direction: column; gap: 12px; pointer-events: none; }
+    .toast { background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(12px); border: 1px solid rgba(226, 232, 240, 0.1); padding: 16px 20px; border-radius: 12px; box-shadow: 0 15px 40px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 600; min-width: 300px; transform: translateX(calc(100% + 40px)); transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); border-left: 5px solid #10b981; color: white; pointer-events: all; will-change: transform; }
+    .toast.show { transform: translateX(0); }
+    .toast.error { border-left-color: #ef4444; }
+    .toast.warning { border-left-color: #f59e0b; }
+    .toast.info { border-left-color: #3b82f6; }
+  </style>
+</head>
+<body class="flex h-screen w-screen overflow-hidden text-slate-300 relative">
+
+  <!-- DATABASE RULES WARNING OVERLAY -->
+  <div id="db-rules-warning" class="fixed inset-0 bg-[#050a14]/95 z-[200] hidden flex-col items-center justify-center p-6 text-center backdrop-blur-md">
+    <div class="w-16 h-16 bg-red-500/20 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4 text-3xl shadow-[0_0_15px_rgba(239,68,68,0.5)]"><i class="fa-solid fa-lock"></i></div>
+    <h2 class="text-2xl font-bold text-white mb-2">Database Access Denied</h2>
+    <p class="text-slate-400 mb-6 max-w-md">Your Firebase Realtime Database rules must be set to public or authenticated admin. Please update your rules in the Firebase Console.</p>
+    <button onclick="window.location.reload()" class="bg-white text-black px-6 py-2.5 rounded-xl font-medium btn hover:bg-slate-200">Reload Application</button>
+  </div>
+
+  <!-- MAIN APP CONTAINER -->
+  <div id="app-container" class="flex w-full h-full relative">
+    
+    <!-- MOBILE SIDEBAR OVERLAY -->
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black/70 z-40 hidden md:hidden backdrop-blur-sm transition-opacity" onclick="App.toggleSidebar()"></div>
+
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="fixed inset-y-0 left-0 w-64 glass border-r border-slate-800 flex flex-col z-50 sidebar-transition -translate-x-full md:relative md:translate-x-0 shadow-2xl">
+      <div class="p-6 flex items-center justify-between border-b border-slate-800/50">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-[#8b5cf6] to-[#0ea5e9] flex items-center justify-center text-white font-bold shadow-lg shadow-primary/20"><i class="fa-solid fa-bolt text-lg"></i></div>
+          <div>
+            <h1 class="text-sm font-extrabold text-white tracking-wide">GOSPEL PANEL</h1>
+            <div class="text-[10px] text-red-400 flex items-center gap-1.5 font-medium mt-0.5" id="dash-conn-status">
+              <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span> Connecting...
+            </div>
+          </div>
+        </div>
+        <button class="md:hidden text-slate-400 hover:text-white" onclick="App.toggleSidebar()"><i class="fa-solid fa-xmark text-xl"></i></button>
+      </div>
+      
+      <div class="flex-1 overflow-y-auto scrollbar py-4">
+        <nav class="space-y-1.5 px-3">
+          <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 px-3 mt-2">Core Operations</div>
+          <button onclick="App.showView('dashboard')" class="nav-item active w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-400 hover:text-white hover:bg-slate-800/50">
+            <i class="fa-solid fa-chart-pie w-5 text-center"></i> Dashboard
+          </button>
+          <button onclick="App.showView('users')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-400 hover:text-white hover:bg-slate-800/50">
+            <i class="fa-solid fa-users w-5 text-center"></i> Directory <span class="ml-auto bg-blue-500/20 text-blue-400 text-[10px] px-2 py-0.5 rounded-full font-bold" id="sb-user-count">0</span>
+          </button>
+          <button onclick="App.showView('content')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-400 hover:text-white hover:bg-slate-800/50">
+            <i class="fa-solid fa-file-lines w-5 text-center"></i> Content Editor
+          </button>
+          <button onclick="App.showView('about')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-400 hover:text-white hover:bg-slate-800/50">
+            <i class="fa-solid fa-address-card w-5 text-center"></i> About Profile Editor
+          </button>
+          
+          <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 px-3 mt-6">Engagement</div>
+          <button onclick="App.showView('support')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-400 hover:text-white hover:bg-slate-800/50 relative">
+            <i class="fa-solid fa-headset w-5 text-center"></i> Support Inbox 
+            <span class="absolute right-3 w-2 h-2 rounded-full bg-red-500 hidden animate-pulse" id="sb-support-unread"></span>
+          </button>
+          <button onclick="App.showView('analytics')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-400 hover:text-white hover:bg-slate-800/50">
+            <i class="fa-solid fa-chart-line w-5 text-center"></i> Analytics
+          </button>
+          
+          <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 px-3 mt-6">System Administration</div>
+          <button onclick="App.showView('security')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-400 hover:text-white hover:bg-slate-800/50">
+            <i class="fa-solid fa-shield-check w-5 text-center"></i> Security & Audit
+          </button>
+          <button onclick="App.showView('health')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-400 hover:text-white hover:bg-slate-800/50">
+            <i class="fa-solid fa-server w-5 text-center"></i> System Health
+          </button>
+          <button onclick="App.showView('backup')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-400 hover:text-white hover:bg-slate-800/50">
+            <i class="fa-solid fa-database w-5 text-center"></i> Backup & Restore
+          </button>
+          <button onclick="App.showView('config')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-400 hover:text-white hover:bg-slate-800/50">
+            <i class="fa-solid fa-gear w-5 text-center"></i> Configuration
+          </button>
+        </nav>
+      </div>
+
+      <div class="p-4 border-t border-slate-800/50">
+        <button onclick="window.location.reload()" class="btn w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-800/50 hover:bg-slate-800 text-slate-300 rounded-xl text-sm font-medium border border-slate-700">
+          <i class="fa-solid fa-rotate-right"></i> Refresh System
+        </button>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 flex flex-col h-full overflow-hidden relative z-10">
+      
+      <!-- TOP HEADER -->
+      <header class="h-16 glass border-b border-slate-800 flex items-center justify-between px-4 md:px-6 shrink-0 relative z-[60]">
+        <div class="flex items-center gap-4">
+          <button class="md:hidden text-slate-300 hover:text-white focus:outline-none bg-slate-800 w-10 h-10 rounded-xl flex items-center justify-center btn" onclick="App.toggleSidebar()">
+            <i class="fa-solid fa-bars"></i>
+          </button>
+          <div class="relative hidden sm:block">
+            <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+            <input type="text" placeholder="Global Search..." class="w-72 bg-[#0a101f] border border-slate-700 rounded-xl py-2 pl-10 pr-4 text-xs font-medium focus:outline-none focus:border-[#8b5cf6] transition text-slate-200">
+          </div>
+        </div>
+        
+        <div class="flex items-center gap-4">
+          <div class="flex items-center gap-3 cursor-pointer bg-[#0a101f] px-3 py-1.5 rounded-xl border border-slate-700/50 hover:border-slate-600 transition">
+            <img src="https://ui-avatars.com/api/?name=Super+Admin&background=8b5cf6&color=fff&rounded=true" class="w-8 h-8 rounded-full shadow-sm">
+            <div class="leading-tight hidden sm:block pr-2">
+              <div class="text-xs font-bold text-white">Super Admin</div>
+              <div class="text-[10px] text-emerald-400 font-medium">Verified Session</div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- VIEWS CONTAINER -->
+      <div class="flex-1 overflow-y-auto scrollbar p-4 md:p-6 bg-[#050a14]" id="views-container">
+        
+        <!-- DASHBOARD VIEW -->
+        <section id="view-dashboard" class="view block space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 class="text-2xl font-extrabold text-white tracking-tight">Command Center</h2>
+              <p class="text-sm text-slate-400 mt-1">System is running optimally. Connection secure.</p>
+            </div>
+            <div class="flex gap-2">
+              <span class="px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-bold flex items-center gap-2 shadow-sm" id="dash-realtime-badge">
+                <i class="fa-solid fa-circle text-[8px] animate-pulse"></i> Realtime Active
+              </span>
+            </div>
+          </div>
+
+          <!-- Quick Stats Row -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            <div class="glass rounded-2xl p-6 flex items-center justify-between border-b-4 border-b-[#8b5cf6] hover:bg-slate-800/40 transition">
+              <div><div class="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2">Total Users</div><div class="text-3xl font-black text-white" id="stat-users">...</div></div>
+              <div class="w-14 h-14 rounded-2xl bg-[#8b5cf6]/10 flex items-center justify-center text-[#8b5cf6] text-2xl shadow-inner"><i class="fa-solid fa-users"></i></div>
+            </div>
+            <div class="glass rounded-2xl p-6 flex items-center justify-between border-b-4 border-b-[#0ea5e9] hover:bg-slate-800/40 transition">
+              <div><div class="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2">Active Articles</div><div class="text-3xl font-black text-white" id="stat-articles">...</div></div>
+              <div class="w-14 h-14 rounded-2xl bg-[#0ea5e9]/10 flex items-center justify-center text-[#0ea5e9] text-2xl shadow-inner"><i class="fa-solid fa-newspaper"></i></div>
+            </div>
+            <div class="glass rounded-2xl p-6 flex items-center justify-between border-b-4 border-b-[#ec4899] hover:bg-slate-800/40 transition">
+              <div><div class="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2">Engagement</div><div class="text-3xl font-black text-white" id="stat-engagement">...</div></div>
+              <div class="w-14 h-14 rounded-2xl bg-[#ec4899]/10 flex items-center justify-center text-[#ec4899] text-2xl shadow-inner"><i class="fa-solid fa-heart"></i></div>
+            </div>
+            <div class="glass rounded-2xl p-6 flex items-center justify-between border-b-4 border-b-emerald-500 hover:bg-slate-800/40 transition">
+              <div><div class="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2">System Health</div><div class="text-3xl font-black text-emerald-400">100%</div></div>
+              <div class="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 text-2xl shadow-inner"><i class="fa-solid fa-server"></i></div>
+            </div>
+          </div>
+
+          <!-- Complex Data Row -->
+          <div class="grid grid-cols-1 xl:grid-cols-12 gap-5">
+            <div class="xl:col-span-8 glass rounded-2xl p-6 flex flex-col min-h-[380px]">
+              <div class="flex items-center justify-between mb-5">
+                <h3 class="font-bold text-white text-base"><i class="fa-solid fa-bolt text-[#8b5cf6] mr-2"></i>Live Audit Feed</h3>
+                <button onclick="App.showView('security')" class="btn text-xs px-4 py-2 rounded-xl bg-[#0a101f] hover:bg-slate-800 transition border border-slate-700 text-slate-300 font-semibold">View All Logs</button>
+              </div>
+              <div class="overflow-y-auto flex-1 h-[250px] scrollbar border border-slate-800/60 rounded-xl bg-[#0a101f] shadow-inner">
+                <table class="w-full text-[13px]">
+                  <thead class="text-slate-500 border-b border-slate-800 sticky top-0 bg-[#0a101f] z-10 shadow-sm">
+                    <tr class="[&>th]:text-left [&>th]:font-bold[&>th]:px-4 [&>th]:py-3 uppercase tracking-wider text-[10px]"><th>Timestamp</th><th>Type</th><th>Identity / Target</th></tr>
+                  </thead>
+                  <tbody id="auditFeed" class="divide-y divide-slate-800/50 font-medium"></tbody>
+                </table>
+              </div>
+            </div>
+            <div class="xl:col-span-4 space-y-5">
+              <div class="glass rounded-2xl p-6 h-[210px] flex flex-col items-center justify-center relative">
+                <h3 class="font-bold text-base text-white absolute top-5 left-5"><i class="fa-solid fa-microchip text-emerald-500 mr-2"></i>CPU Load</h3>
+                <div class="relative w-36 h-36 mt-4">
+                  <canvas id="healthGauge" width="144" height="144"></canvas>
+                  <div class="absolute inset-0 flex flex-col items-center justify-center pt-8">
+                    <div class="text-3xl font-black leading-none text-emerald-400">34%</div>
+                    <div class="text-[10px] text-slate-500 mt-1 font-bold tracking-widest">OPTIMAL</div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- FULLY FUNCTIONAL QUICK ACTIONS -->
+              <div class="glass rounded-2xl p-6">
+                <h3 class="font-bold mb-4 text-base text-white"><i class="fa-solid fa-bolt-lightning text-amber-500 mr-2"></i>Quick Actions</h3>
+                <div class="grid grid-cols-2 gap-3">
+                  <button onclick="App.showView('content'); Content.openModal();" class="btn px-3 py-3 rounded-xl bg-[#8b5cf6]/10 hover:bg-[#8b5cf6]/20 text-[#8b5cf6] border border-[#8b5cf6]/30 text-xs font-bold transition text-center truncate shadow-sm"><i class="fa-solid fa-pen-nib mr-1"></i> New Post</button>
+                  <button onclick="App.showView('backup')" class="btn px-3 py-3 rounded-xl bg-[#0ea5e9]/10 hover:bg-[#0ea5e9]/20 text-[#0ea5e9] border border-[#0ea5e9]/30 text-xs font-bold transition text-center truncate shadow-sm"><i class="fa-solid fa-download mr-1"></i> Backup</button>
+                  <button onclick="App.showView('support')" class="btn px-3 py-3 rounded-xl bg-amber-600/10 hover:bg-amber-600/20 text-amber-400 border border-amber-600/30 text-xs font-bold transition text-center truncate shadow-sm"><i class="fa-solid fa-envelope mr-1"></i> Inbox</button>
+                  <button id="btn-quick-maint" onclick="Config.toggleMaintenance()" class="btn px-3 py-3 rounded-xl bg-slate-800 text-slate-400 border border-slate-700 text-xs font-bold transition text-center truncate shadow-sm"><i class="fa-solid fa-shield-halved mr-1"></i> Maint: OFF</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- USER DIRECTORY -->
+        <section id="view-users" class="view hidden space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
+            <div><h2 class="text-2xl font-bold text-white tracking-tight">User Directory</h2><p class="text-sm text-slate-400 mt-1">Manage accounts, roles, and access states</p></div>
+            <div class="flex gap-2">
+              <button onclick="Users.openModal()" class="btn px-5 py-2.5 rounded-xl bg-[#8b5cf6] hover:bg-[#7c3aed] text-sm font-bold text-white shadow-lg shadow-[#8b5cf6]/25"><i class="fa-solid fa-user-plus mr-2"></i> Add User</button>
+            </div>
+          </div>
+          <div class="glass rounded-2xl p-6">
+            <div class="flex flex-wrap gap-3 mb-5 bg-[#0a101f] p-3 rounded-xl border border-slate-800">
+              <input type="text" id="userSearch" onkeyup="Handlers.filterUsers()" placeholder="Search by name or email..." class="px-4 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-sm w-full sm:w-72 outline-none focus:border-[#8b5cf6] text-white transition font-medium">
+              <select id="userRoleFilter" onchange="Users.filter()" class="px-4 py-2.5 rounded-lg bg-slate-900 border border-slate-700 text-sm outline-none text-slate-300 font-medium focus:border-[#8b5cf6] transition cursor-pointer"><option value="">All Roles</option><option>Admin</option><option>Moderator</option><option>User</option></select>
+              <button onclick="Users.bulkDelete()" class="btn px-4 py-2.5 rounded-lg bg-red-500/10 text-red-400 text-sm font-bold hover:bg-red-500/20 sm:ml-auto border border-red-500/20 transition"><i class="fa-solid fa-trash-can mr-2"></i> Delete Selected</button>
+            </div>
+            <div class="overflow-x-auto border border-slate-800/60 rounded-xl bg-[#0a101f] shadow-inner">
+              <table class="w-full text-sm font-medium min-w-max" id="userTableData">
+                <thead class="text-slate-400 border-b border-slate-800 bg-slate-900 shadow-sm">
+                  <tr class="[&>th]:text-left [&>th]:px-4[&>th]:py-3.5 [&>th]:font-bold uppercase tracking-wider text-[11px]">
+                    <th class="w-10 pl-5"><input type="checkbox" id="checkAll" onchange="Users.toggleAll(this)" class="rounded border-slate-600 bg-slate-900 cursor-pointer w-4 h-4 accent-[#8b5cf6]"></th>
+                    <th>User Profile</th><th>Role</th><th>Status</th><th>Last Login</th><th class="text-right pr-5">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="usersTable" class="divide-y divide-slate-800/50"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- CONTENT EDITOR -->
+        <section id="view-content" class="view hidden space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
+            <div><h2 class="text-2xl font-bold text-white tracking-tight">Content Repository</h2><p class="text-sm text-slate-400 mt-1">Manage prophetic words, testimonies, and scheduled insights</p></div>
+            <button onclick="Content.openModal()" class="btn px-5 py-2.5 rounded-xl bg-[#0ea5e9] hover:bg-[#0284c7] text-sm font-bold text-white shadow-lg shadow-[#0ea5e9]/25"><i class="fa-solid fa-pen-nib mr-2"></i> Draft New Post</button>
+          </div>
+          <div class="glass rounded-2xl p-6">
+            <div class="overflow-x-auto border border-slate-800/60 rounded-xl bg-[#0a101f] shadow-inner">
+              <table class="w-full text-sm font-medium min-w-max">
+                <thead class="text-slate-400 border-b border-slate-800 bg-slate-900 shadow-sm">
+                  <tr class="[&>th]:text-left [&>th]:px-4 [&>th]:py-3.5 [&>th]:font-bold uppercase tracking-wider text-[11px]">
+                    <th class="pl-5">Title & Meta</th><th>Category</th><th>Status</th><th>Metrics</th><th>Last Updated</th><th class="text-right pr-5">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="contentTable" class="divide-y divide-slate-800/50"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ABOUT PAGE EDITOR -->
+        <section id="view-about" class="view hidden space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
+                <div><h2 class="text-2xl font-bold text-white tracking-tight">About Profile Editor</h2><p class="text-sm text-slate-400 mt-1">Manage the platform's public profile, typography, and imagery</p></div>
+            </div>
+            
+            <div class="glass rounded-2xl p-8 border-t-4 border-t-[#8b5cf6]">
+                <h3 class="font-bold text-white text-lg mb-6"><i class="fa-solid fa-address-card text-[#8b5cf6] mr-2"></i> Public Profile Configuration</h3>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Left Col: Images & Meta -->
+                    <div class="lg:col-span-1 space-y-6">
+                        <div class="bg-[#0a101f] p-5 rounded-xl border border-slate-800">
+                            <label class="block text-sm font-bold text-slate-300 mb-3">Profile Picture (Avatar)</label>
+                            <div class="flex flex-col items-center gap-4">
+                                <div class="w-32 h-32 rounded-full p-1.5 border-2 border-[#8b5cf6] bg-slate-900">
+                                    <img id="aboutImgPreview" src="" class="w-full h-full rounded-full object-cover shadow-lg bg-slate-800" alt="Profile Preview">
+                                </div>
+                                <input type="file" id="aboutImgFile" accept="image/*" class="hidden" onchange="About.handleImageUpload(event, 'aboutImgPreview', 'aboutImgBase64')">
+                                <input type="hidden" id="aboutImgBase64">
+                                <button onclick="document.getElementById('aboutImgFile').click()" class="btn px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl text-xs font-bold text-white shadow w-full"><i class="fa-solid fa-camera mr-2"></i> Change Avatar</button>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-[#0a101f] p-5 rounded-xl border border-slate-800 space-y-4">
+                            <div><label class="text-xs font-bold text-slate-400 mb-1 block">Main Title</label><input id="aboutTitle" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-[#8b5cf6] outline-none font-medium" /></div>
+                            <div><label class="text-xs font-bold text-slate-400 mb-1 block">Subtitle (Role/Position)</label><input id="aboutSubtitle" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-[#8b5cf6] outline-none font-medium" /></div>
+                        </div>
+
+                        <div class="bg-[#0a101f] p-5 rounded-xl border border-slate-800 space-y-4">
+                            <div><label class="text-xs font-bold text-slate-400 mb-1 block">Featured Quote Text</label><textarea id="aboutQuoteText" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-[#8b5cf6] outline-none font-medium resize-none"></textarea></div>
+                            <div><label class="text-xs font-bold text-slate-400 mb-1 block">Quote Author</label><input id="aboutQuoteAuthor" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-[#8b5cf6] outline-none font-medium" /></div>
+                        </div>
+                    </div>
+
+                    <!-- Right Col: Rich Text Editor -->
+                    <div class="lg:col-span-2 flex flex-col h-full">
+                        <div class="bg-[#0a101f] rounded-xl border border-slate-800 flex flex-col flex-1 overflow-hidden">
+                            <div class="p-3 border-b border-slate-800 bg-slate-900 flex justify-between items-center shrink-0">
+                                <label class="text-sm font-bold text-white">Biography / Main Body Content</label>
+                                <!-- Rich Text Toolbar -->
+                                <div class="flex gap-2">
+                                    <input type="file" id="aboutBodyImgFile" accept="image/*" class="hidden" onchange="About.injectImageToBody(event)">
+                                    <button onclick="document.getElementById('aboutBodyImgFile').click()" class="btn px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg text-xs font-bold text-[#0ea5e9] shadow-sm"><i class="fa-solid fa-image mr-1"></i> Insert Image in Text</button>
+                                </div>
+                            </div>
+                            <div class="p-3 bg-slate-900/50 border-b border-slate-800 text-[11px] text-slate-400">
+                                <i class="fa-solid fa-circle-info mr-1 text-[#8b5cf6]"></i> HTML tags are supported. Use <code>&lt;p&gt;</code> for paragraphs and <code>&lt;h3&gt;</code> for subheadings.
+                            </div>
+                            <textarea id="aboutBodyHTML" class="flex-1 w-full bg-slate-900 p-5 text-sm text-slate-300 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-[#8b5cf6] resize-none font-mono" placeholder="<p>Write biography here...</p>"></textarea>
+                        </div>
+                        
+                        <div class="mt-6 flex justify-end">
+                            <button id="aboutSaveBtn" onclick="About.save()" class="btn px-8 py-3.5 rounded-xl bg-[#8b5cf6] hover:bg-[#7c3aed] text-sm font-bold text-white shadow-lg shadow-[#8b5cf6]/25 w-full sm:w-auto"><i class="fa-solid fa-cloud-arrow-up mr-2"></i> Publish Profile Updates</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ADVANCED SUPPORT & MESSAGING -->
+        <section id="view-support" class="view hidden h-[calc(100vh-160px)]">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                <div><h2 class="text-2xl font-bold text-white tracking-tight">Support Operations</h2><p class="text-sm text-slate-400 mt-1">Real-time end-to-end encrypted user communications</p></div>
+            </div>
+            
+            <div class="border border-slate-800 rounded-2xl flex w-full h-full overflow-hidden bg-[#0a101f] relative shadow-[0_10px_40px_rgba(0,0,0,0.2)]">
+                
+                <!-- Left Sidebar: Users List (Absolute on Mobile, Relative on Desktop) -->
+                <div id="supportUserSidebar" class="absolute md:relative inset-y-0 left-0 z-30 w-full md:w-[320px] bg-[#050a14] border-r border-slate-800 flex flex-col shrink-0 transition-transform duration-300 transform md:translate-x-0">
+                    <div class="p-5 border-b border-slate-800 bg-slate-900/50 shrink-0">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-white font-bold text-lg"><i class="fa-solid fa-inbox text-[#0ea5e9] mr-2"></i>Active Tickets</h3>
+                            <button onclick="Support.toggleSidebar()" class="text-[#8b5cf6] hover:text-white transition w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-800 md:hidden btn">
+                                <i class="fa-solid fa-bars-staggered"></i>
+                            </button>
+                        </div>
+                        <div class="relative">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
+                            <input type="text" id="supportSearch" onkeyup="Handlers.filterSupport()" placeholder="Search active users..." class="w-full bg-[#0a101f] border border-slate-700 rounded-xl py-2.5 pl-10 pr-4 text-sm font-medium focus:outline-none focus:border-[#8b5cf6] text-white shadow-inner">
+                        </div>
+                    </div>
+                    <div class="flex-1 overflow-y-auto scrollbar divide-y divide-slate-800/60 bg-[#050a14]" id="supportUserList">
+                        <!-- User items injected here -->
+                    </div>
+                </div>
+                
+                <!-- Right Sidebar: Chat Area -->
+                <div class="flex-1 flex flex-col relative bg-[#0a101f] min-w-0" id="supportChatArea">
+                    <div class="absolute inset-0 flex flex-col items-center justify-center text-slate-500 z-0 bg-[#0a101f]" id="supportEmptyState">
+                        <div class="w-24 h-24 rounded-full bg-slate-800/50 flex items-center justify-center mb-6 shadow-inner border border-slate-800"><i class="fa-regular fa-comments text-4xl text-slate-600"></i></div>
+                        <p class="text-base font-bold text-slate-300">Select a user to initiate secure chat</p>
+                        <button onclick="Support.toggleSidebar()" class="btn mt-6 px-6 py-2.5 bg-[#8b5cf6] hover:bg-[#7c3aed] rounded-xl text-sm font-bold text-white md:hidden shadow-lg"><i class="fa-solid fa-users mr-2"></i> View User List</button>
+                    </div>
+                    
+                    <!-- Chat Header -->
+                    <div id="supportChatHeader" class="p-4 sm:p-5 border-b border-slate-800 bg-slate-900/50 flex items-center justify-between z-10 hidden shrink-0 backdrop-blur-md">
+                        <div class="flex items-center gap-4">
+                            <button onclick="Support.toggleSidebar()" class="btn text-slate-400 hover:text-white transition bg-slate-800 w-10 h-10 rounded-xl flex items-center justify-center shrink-0 md:hidden border border-slate-700">
+                                <i class="fa-solid fa-arrow-left"></i>
+                            </button>
+                            <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-[#8b5cf6] to-[#ec4899] text-white flex items-center justify-center font-black text-lg shrink-0 shadow-md" id="schatAvatar">U</div>
+                            <div class="min-w-0">
+                                <h4 class="text-[15px] sm:text-base font-extrabold text-white leading-tight truncate" id="schatName">User Name</h4>
+                                <div class="text-[10px] sm:text-[11px] text-emerald-400 font-bold flex items-center gap-1.5 mt-1"><i class="fa-solid fa-circle text-[7px] animate-pulse"></i> Encrypted Session Active</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Chat Messages -->
+                    <div id="supportMessages" class="flex-1 overflow-y-auto scrollbar p-4 sm:p-6 space-y-4 z-10 hidden flex-col bg-[#0a101f] scroll-smooth pb-4">
+                        <!-- Messages flow here -->
+                    </div>
+
+                    <!-- Chat Input -->
+                    <div id="supportInputArea" class="p-3 sm:p-5 bg-slate-900/80 border-t border-slate-800 gap-2 sm:gap-3 items-end shrink-0 z-10 hidden backdrop-blur-md">
+                        <textarea id="supportInput" rows="1" class="flex-1 bg-[#050a14] border border-slate-700 rounded-2xl px-4 sm:px-5 py-3 sm:py-3.5 text-[14px] sm:text-[15px] font-medium text-white focus:border-[#8b5cf6] outline-none resize-none max-h-32 scrollbar placeholder:text-slate-500 shadow-inner leading-relaxed" placeholder="Type an administrative response..." onkeydown="if(event.keyCode===13 && !event.shiftKey){event.preventDefault(); Support.sendMessage();}"></textarea>
+                        <button id="supportSendBtn" onclick="Support.sendMessage()" class="btn w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-[#8b5cf6] hover:bg-[#7c3aed] text-white flex items-center justify-center transition shadow-lg shadow-[#8b5cf6]/20 shrink-0 text-xl"><i class="fa-solid fa-paper-plane"></i></button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECURITY LOGS -->
+        <section id="view-security" class="view hidden space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
+            <div><h2 class="text-2xl font-bold text-white tracking-tight">Security & Audit Engine</h2><p class="text-sm text-slate-400 mt-1">Immutable tracking of all systemic actions</p></div>
+            <div class="flex gap-3 flex-wrap">
+              <input type="text" id="auditSearch" placeholder="Search parameters..." onkeyup="Handlers.filterSecurity()" class="px-4 py-2.5 rounded-xl bg-[#0a101f] border border-slate-800 text-sm font-medium text-white focus:border-[#8b5cf6] outline-none w-48 shadow-inner">
+              <select id="auditFilter" onchange="Security.applyFilter()" class="px-4 py-2.5 rounded-xl bg-[#0a101f] border border-slate-800 text-sm font-bold outline-none text-slate-300 focus:border-[#8b5cf6] cursor-pointer">
+                  <option value="ALL">All Events</option><option value="AUTH">Authentication</option><option value="USER">Client Activity</option><option value="CONTENT">Content Actions</option><option value="SYSTEM">System Overrides</option>
+              </select>
+              <button onclick="Security.exportCSV()" class="btn px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-sm font-bold text-white border border-slate-700 shadow"><i class="fa-solid fa-file-csv mr-2"></i> Export Report</button>
+            </div>
+          </div>
+          <div class="glass rounded-3xl p-6 flex flex-col h-[650px]">
+            <div class="flex-1 overflow-x-auto overflow-y-auto scrollbar border border-slate-800/60 rounded-xl bg-[#0a101f] shadow-inner">
+               <table class="w-full text-[12px] font-mono font-medium min-w-max" id="auditTableData">
+                 <thead class="text-slate-400 border-b border-slate-800 sticky top-0 bg-slate-900 shadow-sm z-10">
+                   <tr class="[&>th]:text-left [&>th]:px-4 [&>th]:py-3.5 uppercase tracking-wider text-[10px] font-bold">
+                     <th class="pl-5">Timestamp UTC</th><th>Event Vector</th><th>Execution</th><th>Identity Context</th><th>Detailed Telemetry</th>
+                   </tr>
+                 </thead>
+                 <tbody id="securityList" class="divide-y divide-slate-800/50"></tbody>
+               </table>
+            </div>
+            <!-- Pagination Controls -->
+            <div class="flex justify-between items-center mt-5 pt-3 border-t border-slate-800">
+                <div class="text-sm font-bold text-slate-400" id="auditPageInfo">Page 1 of 1</div>
+                <div class="flex gap-2">
+                    <button onclick="Security.prevPage()" class="btn px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-white border border-slate-700">Previous Data</button>
+                    <button onclick="Security.nextPage()" class="btn px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-white border border-slate-700">Next Data</button>
+                </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ANALYTICS -->
+        <section id="view-analytics" class="view hidden space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
+            <div><h2 class="text-2xl font-bold text-white tracking-tight">Advanced Analytics</h2><p class="text-sm text-slate-400 mt-1">Deep computational insights into platform trajectory</p></div>
+          </div>
+          
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
+             <div class="glass rounded-3xl p-6 border-b-4 border-b-[#8b5cf6]">
+                <div class="text-[12px] text-slate-400 font-bold uppercase tracking-wider mb-2">Total Content Views</div>
+                <div class="text-4xl font-black text-white" id="stat-total-views">0</div>
+             </div>
+             <div class="glass rounded-3xl p-6 border-b-4 border-b-[#0ea5e9]">
+                <div class="text-[12px] text-slate-400 font-bold uppercase tracking-wider mb-2">Total Engagement Matrix</div>
+                <div class="text-4xl font-black text-white" id="stat-total-eng">0</div>
+             </div>
+             <div class="glass rounded-3xl p-6 border-b-4 border-b-[#10b981]">
+                <div class="text-[12px] text-slate-400 font-bold uppercase tracking-wider mb-2">Active Accounts (14 Days)</div>
+                <div class="text-4xl font-black text-white" id="stat-active-users">0</div>
+             </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+              <div class="lg:col-span-2 glass rounded-3xl p-8 w-full border border-slate-800 bg-[#0a101f] shadow-inner">
+                <div class="flex justify-between items-center mb-6">
+                  <h3 class="font-bold text-base text-white"><i class="fa-solid fa-chart-simple text-[#8b5cf6] mr-2"></i>Content Engagement Top Chart</h3>
+                  <div class="flex items-center gap-4 text-xs font-bold text-slate-400">
+                    <span class="flex items-center gap-1.5"><div class="w-3 h-3 rounded-md bg-[#0ea5e9]"></div> Views</span>
+                    <span class="flex items-center gap-1.5"><div class="w-3 h-3 rounded-md bg-[#ec4899]"></div> Likes</span>
+                  </div>
+                </div>
+                <div class="h-[340px] relative w-full"><canvas id="analyticsChart"></canvas></div>
+              </div>
+              <div class="glass rounded-3xl p-8 w-full border border-slate-800 bg-[#0a101f] flex flex-col shadow-inner">
+                  <h3 class="font-bold text-base text-white mb-6"><i class="fa-solid fa-chart-pie text-[#0ea5e9] mr-2"></i>User Retention Distribution</h3>
+                  <div class="flex-1 relative flex items-center justify-center min-h-[220px]"><canvas id="userDistChart"></canvas></div>
+              </div>
+          </div>
+        </section>
+
+        <!-- BACKUPS -->
+        <section id="view-backup" class="view hidden space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
+              <div><h2 class="text-2xl font-bold text-white tracking-tight">Database Architecture</h2><p class="text-sm text-slate-400 mt-1">Securely export and physically overwrite complete server states</p></div>
+          </div>
+          <div class="grid lg:grid-cols-2 gap-6">
+            <div class="glass rounded-3xl p-10 border-t-4 border-t-blue-500 text-center flex flex-col items-center">
+                <div class="w-20 h-20 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center text-3xl mb-6 shadow-inner border border-blue-500/20"><i class="fa-solid fa-cloud-arrow-down"></i></div>
+                <h3 class="text-xl font-bold text-white mb-3">Export Database Snapshot</h3>
+                <p class="text-sm text-slate-400 mb-8 max-w-sm leading-relaxed">Download a physically encoded JSON snapshot containing every single user, post, comment, configuration, and audit log currently residing on the server.</p>
+                <button id="btnExportDB" onclick="Backup.export()" class="btn px-8 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold transition shadow-lg w-full max-w-[240px]">Generate JSON Export</button>
+            </div>
+            <div class="glass rounded-3xl p-10 border-t-4 border-t-red-500 text-center flex flex-col items-center bg-red-900/5">
+                <div class="w-20 h-20 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center text-3xl mb-6 shadow-inner border border-red-500/20"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                <h3 class="text-xl font-bold text-white mb-3">Destructive Restore</h3>
+                <p class="text-sm text-slate-400 mb-8 max-w-sm leading-relaxed font-medium">Upload a valid JSON backup file. <span class="text-red-400">WARNING:</span> This will instantaneously wipe and overwrite the live production database.</p>
+                <input type="file" id="importFile" accept=".json" class="hidden" onchange="Backup.import(event)">
+                <button id="btnImportDB" onclick="document.getElementById('importFile').click()" class="btn px-8 py-3.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold transition shadow-lg shadow-red-600/20 w-full max-w-[240px]">Upload & Overwrite</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- CONFIGURATION -->
+        <section id="view-config" class="view hidden space-y-4">
+          <div class="mb-2"><h2 class="text-2xl font-bold text-white tracking-tight">System Core Configuration</h2><p class="text-sm text-slate-400 mt-1">Manage macro-level client availability and states</p></div>
+          <div class="grid lg:grid-cols-2 gap-6">
+            <div class="glass rounded-3xl p-8 border border-slate-800">
+              <h3 class="font-bold mb-6 text-base text-white border-b border-slate-800 pb-4"><i class="fa-solid fa-sliders text-[#8b5cf6] mr-2"></i>Global Feature Toggles</h3>
+              <div class="space-y-6 text-sm">
+                <label class="flex items-center justify-between cursor-pointer group bg-[#0a101f] p-4 rounded-xl border border-slate-800">
+                    <span class="text-slate-300 font-bold group-hover:text-white transition">Enable Public Registration</span>
+                    <input type="checkbox" id="cfgReg" class="toggle">
+                </label>
+                <label class="flex items-center justify-between cursor-pointer group bg-[#0a101f] p-4 rounded-xl border border-slate-800">
+                    <span class="text-slate-300 font-bold group-hover:text-white transition">Enable Public Comments</span>
+                    <input type="checkbox" id="cfgComm" class="toggle">
+                </label>
+              </div>
+            </div>
+            <div class="glass rounded-3xl p-8 border border-red-900/30 bg-red-900/5">
+              <h3 class="font-bold mb-6 text-base text-red-400 border-b border-red-900/50 pb-4"><i class="fa-solid fa-shield-virus mr-2"></i>Emergency Maintenace Protocol</h3>
+              <div class="space-y-5">
+                <label class="flex items-center justify-between cursor-pointer group bg-red-950/20 p-4 rounded-xl border border-red-900/50">
+                    <span class="text-red-300 font-bold">Activate Maintenance Firewall</span>
+                    <input type="checkbox" id="cfgMaint" class="toggle bg-red-900/50">
+                </label>
+                <div>
+                  <label class="block text-xs font-bold text-slate-400 mb-2 pl-1">Client-Facing Display Message</label>
+                  <textarea id="cfgMaintMsg" rows="5" class="w-full bg-[#0a101f] border border-slate-700 rounded-xl px-5 py-4 text-sm font-medium text-white focus:border-red-500 outline-none placeholder:text-slate-600 resize-none shadow-inner" placeholder="We are currently performing scheduled maintenance..."></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+          <button id="btnSaveConfig" onclick="Config.save()" class="btn w-full mt-4 py-4 rounded-2xl bg-[#8b5cf6] hover:bg-[#7c3aed] text-base font-black text-white shadow-[0_10px_30px_rgba(139,92,246,0.3)] transition"><i class="fa-solid fa-cloud-arrow-up mr-2"></i> Deploy Global Configurations</button>
+        </section>
+
+        <!-- SYSTEM HEALTH -->
+        <section id="view-health" class="view hidden space-y-4">
+          <div class="mb-2"><h2 class="text-2xl font-bold text-white tracking-tight">Hardware Telemetry</h2><p class="text-sm text-slate-400 mt-1">Live simulated monitoring of computational stress</p></div>
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-6 mt-4">
+            <div class="glass rounded-3xl p-8 flex flex-col items-center border-t-4 border-t-[#0ea5e9] shadow-inner"><div class="relative w-32 h-32"><canvas id="gaugeMem"></canvas></div><div class="text-xs mt-5 text-white font-bold tracking-widest">RAM USAGE <span class="text-slate-400 font-mono ml-1">62%</span></div></div>
+            <div class="glass rounded-3xl p-8 flex flex-col items-center border-t-4 border-t-[#ec4899] shadow-inner"><div class="relative w-32 h-32"><canvas id="gaugeDisk"></canvas></div><div class="text-xs mt-5 text-white font-bold tracking-widest">DISK I/O <span class="text-slate-400 font-mono ml-1">28%</span></div></div>
+            <div class="glass rounded-3xl p-8 flex flex-col items-center border-t-4 border-t-[#10b981] shadow-inner"><div class="relative w-32 h-32"><canvas id="gaugeNet"></canvas></div><div class="text-xs mt-5 text-white font-bold tracking-widest">NETWORK <span class="text-slate-400 font-mono ml-1">45Mb/s</span></div></div>
+            <div class="glass rounded-3xl p-8 flex flex-col items-center border-t-4 border-t-[#f59e0b] shadow-inner"><div class="relative w-32 h-32"><canvas id="gaugeDB"></canvas></div><div class="text-xs mt-5 text-white font-bold tracking-widest">DB LATENCY <span class="text-slate-400 font-mono ml-1">12ms</span></div></div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- MODALS (z-[110]) -->
+
+  <!-- User Edit/Add Modal -->
+  <div id="modal-user" class="fixed inset-0 bg-black/80 z-[110] hidden flex-col items-center justify-center p-4 backdrop-blur-md">
+    <div class="bg-[#0f172a] w-full max-w-md rounded-3xl p-8 shadow-[0_20px_60px_rgba(0,0,0,0.5)] border border-slate-700 transform transition-all">
+      <h3 class="text-2xl font-black text-white mb-6 tracking-tight" id="userModalTitle">Edit User Credentials</h3>
+      <input type="hidden" id="userId">
+      <div class="space-y-5">
+        <div><label class="text-xs font-bold text-slate-400 ml-1 block mb-1.5">Email (Primary Key ID)</label><input id="userEmail" type="email" placeholder="user@example.com" class="w-full bg-[#050a14] border border-slate-700 rounded-xl px-4 py-3 text-sm font-medium text-white focus:border-[#8b5cf6] outline-none shadow-inner" /></div>
+        <div><label class="text-xs font-bold text-slate-400 ml-1 block mb-1.5">Full Name</label><input id="userName" placeholder="John Doe" class="w-full bg-[#050a14] border border-slate-700 rounded-xl px-4 py-3 text-sm font-medium text-white focus:border-[#8b5cf6] outline-none shadow-inner" /></div>
+        <div><label class="text-xs font-bold text-slate-400 ml-1 block mb-1.5">Raw Password</label><input id="userPassword" type="text" placeholder="Min 6 characters" class="w-full bg-[#050a14] border border-slate-700 rounded-xl px-4 py-3 text-sm font-medium text-white focus:border-[#8b5cf6] outline-none shadow-inner" /></div>
+        <div class="grid grid-cols-2 gap-4">
+          <div><label class="text-xs font-bold text-slate-400 ml-1 block mb-1.5">System Role</label><select id="userRole" class="w-full bg-[#050a14] border border-slate-700 rounded-xl px-4 py-3 text-sm font-bold text-white focus:border-[#8b5cf6] outline-none cursor-pointer"><option>User</option><option>Moderator</option><option>Admin</option></select></div>
+          <div><label class="text-xs font-bold text-slate-400 ml-1 block mb-1.5">Access Status</label><select id="userStatus" class="w-full bg-[#050a14] border border-slate-700 rounded-xl px-4 py-3 text-sm font-bold text-white focus:border-red-500 outline-none cursor-pointer"><option>Active</option><option>Suspended</option></select></div>
+        </div>
+      </div>
+      <div class="flex justify-end gap-3 mt-8">
+        <button onclick="document.getElementById('modal-user').classList.add('hidden')" class="btn px-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-sm font-bold text-white border border-slate-700 transition">Cancel</button>
+        <button id="btnSaveUser" onclick="Users.save()" class="btn px-8 py-3 rounded-xl bg-[#8b5cf6] hover:bg-[#7c3aed] text-sm text-white font-bold transition shadow-lg shadow-[#8b5cf6]/30">Commit User</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Content Edit/Add Modal -->
+  <div id="modal-content" class="fixed inset-0 bg-black/80 z-[110] hidden flex-col items-center justify-center p-4 backdrop-blur-md">
+    <div class="bg-[#0f172a] w-full max-w-4xl rounded-3xl p-8 shadow-[0_20px_60px_rgba(0,0,0,0.5)] border border-slate-700 transform transition-all max-h-[90vh] flex flex-col">
+      <div class="flex justify-between items-center mb-6 shrink-0 border-b border-slate-800 pb-4">
+          <h3 class="text-2xl font-black text-white tracking-tight" id="contentModalTitle"><i class="fa-solid fa-pen-nib text-[#8b5cf6] mr-2"></i> Content Drafting Engine</h3>
+          <button onclick="document.getElementById('modal-content').classList.add('hidden')" class="btn w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center text-slate-400 hover:text-white transition"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <div class="overflow-y-auto scrollbar pr-3 flex-1 space-y-5">
+        <input type="hidden" id="contentId">
+        <div><label class="text-xs font-bold text-slate-400 ml-1 block mb-1.5">Headline Title</label><input id="contentTitle" placeholder="The Lord's message..." class="w-full bg-[#050a14] border border-slate-700 rounded-xl px-5 py-3.5 text-[15px] font-medium text-white focus:border-[#8b5cf6] outline-none shadow-inner" /></div>
+        
+        <!-- Direct Image Upload System -->
+        <div class="bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+            <label class="text-xs font-bold text-slate-400 ml-1 block mb-2">Featured Card Image</label>
+            <div class="flex items-center gap-5">
+                <input type="file" id="contentImageFile" accept="image/*" class="hidden" onchange="Content.handleImageUpload(event)">
+                <button onclick="document.getElementById('contentImageFile').click()" class="btn px-5 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl text-xs font-bold text-white transition shadow"><i class="fa-solid fa-cloud-arrow-up mr-2 text-[#0ea5e9]"></i> Import File</button>
+                <img id="contentImagePreview" src="" class="hidden h-14 w-20 object-cover rounded-lg border border-slate-700 shadow-md">
+            </div>
+            <input type="hidden" id="contentImageBase64">
+        </div>
+
+        <div>
+            <label class="text-xs font-bold text-slate-400 ml-1 block mb-1.5">Prophetic Body (Raw HTML Permitted)</label>
+            <textarea id="contentBody" rows="8" class="w-full bg-[#050a14] border border-slate-700 rounded-xl px-5 py-4 text-[14.5px] font-mono text-slate-300 focus:border-[#8b5cf6] outline-none placeholder:text-slate-600 resize-none shadow-inner leading-relaxed" placeholder="<p>Write the revelation here...</p>"></textarea>
+        </div>
+        
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 items-start bg-slate-900/30 p-4 rounded-xl border border-slate-800">
+          <div><label class="text-xs font-bold text-slate-400 ml-1 block mb-1.5">Classification</label><input id="contentCategory" value="Prophecy" class="w-full bg-[#050a14] border border-slate-700 rounded-lg px-3 py-2.5 text-sm font-medium text-white focus:border-[#8b5cf6] outline-none" /></div>
+          <div><label class="text-xs font-bold text-slate-400 ml-1 block mb-1.5">Visibility State</label><select id="contentStatus" onchange="Content.toggleScheduleInput()" class="w-full bg-[#050a14] border border-slate-700 rounded-lg px-3 py-2.5 text-sm font-bold text-white focus:border-[#8b5cf6] outline-none cursor-pointer"><option>Published</option><option>Draft</option><option>Scheduled</option></select></div>
+          <div><label class="text-xs font-bold text-slate-400 ml-1 block mb-1.5">Likes Override</label><input id="contentLikes" type="number" min="0" class="w-full bg-[#050a14] border border-slate-700 rounded-lg px-3 py-2.5 text-sm font-mono text-white focus:border-[#8b5cf6] outline-none" /></div>
+          <div><label class="text-xs font-bold text-slate-400 ml-1 block mb-1.5">Shares Override</label><input id="contentShares" type="number" min="0" class="w-full bg-[#050a14] border border-slate-700 rounded-lg px-3 py-2.5 text-sm font-mono text-white focus:border-[#8b5cf6] outline-none" /></div>
+          <div class="flex flex-col pb-2 pl-2 pt-6">
+              <label class="flex items-center gap-3 cursor-pointer group">
+                  <span class="text-sm font-bold text-slate-300 group-hover:text-white transition">Pin High 📌</span>
+                  <input type="checkbox" id="contentPinned" class="toggle">
+              </label>
+          </div>
+        </div>
+
+        <div id="scheduleContainer" class="hidden bg-slate-900/30 p-4 rounded-xl border border-slate-800">
+            <label class="text-xs font-bold text-slate-400 ml-1 block mb-1.5"><i class="fa-solid fa-clock text-[#8b5cf6] mr-1"></i> Scheduled Publish Time (Local Timezone)</label>
+            <input type="datetime-local" id="contentScheduledFor" class="w-full bg-[#050a14] border border-slate-700 rounded-lg px-3 py-2.5 text-sm font-medium text-white focus:border-[#8b5cf6] outline-none" />
+            <p class="text-[10px] text-slate-500 mt-2"><i class="fa-solid fa-circle-info mr-1"></i> **Advanced Background Mode Active:** Decentralized Web Workers will aggressively calculate this timestamp. The post will execute mathematically when the time resolves, independent of your active tab state.</p>
+        </div>
+
+      </div>
+      <div class="flex justify-end gap-3 mt-6 pt-5 border-t border-slate-800 shrink-0">
+        <button onclick="document.getElementById('modal-content').classList.add('hidden')" class="btn px-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-sm font-bold text-white border border-slate-700 transition">Discard</button>
+        <button id="btnSaveContent" onclick="Content.save()" class="btn px-8 py-3 rounded-xl bg-[#0ea5e9] hover:bg-[#0284c7] text-sm text-white font-bold transition shadow-lg shadow-[#0ea5e9]/30"><i class="fa-solid fa-server mr-2"></i> Commit to DB</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Comments Manage Modal -->
+  <div id="modal-comments" class="fixed inset-0 bg-black/80 z-[110] hidden flex-col items-center justify-center p-4 backdrop-blur-md">
+    <div class="bg-[#0f172a] w-full max-w-xl rounded-3xl p-8 shadow-[0_20px_60px_rgba(0,0,0,0.5)] border border-slate-700 transform transition-all max-h-[85vh] flex flex-col">
+      <div class="flex justify-between items-center mb-5 pb-4 border-b border-slate-800 shrink-0">
+          <h3 class="text-2xl font-black text-white tracking-tight"><i class="fa-solid fa-comments text-blue-400 mr-2"></i>Moderation Queue</h3>
+          <button onclick="document.getElementById('modal-comments').classList.add('hidden')" class="btn w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center text-slate-400 hover:text-white transition"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <div id="commentsList" class="overflow-y-auto scrollbar pr-2 flex-1 space-y-4">
+          <!-- Comments injected here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Overlay Container (Highest Z-Index) -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- FIREBASE AND APP LOGIC -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getDatabase, ref, onValue, onChildAdded, onChildChanged, onChildRemoved, set, push, remove, update, query, limitToLast, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+    // 1. Firebase Configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyC62LYyePrJv28CsNstvo5r-jssqT0HSZM",
+      authDomain: "gospelprophecy-15f18.firebaseapp.com",
+      projectId: "gospelprophecy-15f18",
+      storageBucket: "gospelprophecy-15f18.firebasestorage.app",
+      messagingSenderId: "116748115311",
+      appId: "1:116748115311:web:376f8530f95b1955301c9a",
+      measurementId: "G-D4RYBRWGHF"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // Advanced Helpers
+    const encodeEmail = email => email.replace(/[.#$\[\]]/g, ',');
+    const decodeEmail = encoded => encoded.replace(/,/g, '.');
+
+    // ==========================================
+    // GLOBAL APP HANDLERS & UTILS
+    // ==========================================
+    window.App = {
+      debounce: (func, wait) => {
+        let timeout;
+        return function(...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), wait);
+        };
+      },
+      toast: (message, type = 'info') => {
+        const container = document.getElementById('toastContainer');
+        if(!container) return;
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        
+        let iconClass = 'fa-circle-info';
+        if (type === 'error') iconClass = 'fa-circle-xmark';
+        if (type === 'warning') iconClass = 'fa-triangle-exclamation';
+        if (type === 'success') iconClass = 'fa-circle-check';
+        if (type === 'loading') iconClass = 'fa-circle-notch fa-spin';
+
+        toast.innerHTML = `<i class="fa-solid ${iconClass}"></i><span>${message}</span>`;
+        container.appendChild(toast);
+        
+        requestAnimationFrame(() => toast.classList.add('show'));
+        setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 400); }, 4000);
+      },
+      showView: (id) => {
+        document.querySelectorAll('.view').forEach(el => el.classList.add('hidden'));
+        const target = document.getElementById(`view-${id}`);
+        if(target) {
+            target.classList.remove('hidden');
+            target.classList.remove('page-transition');
+            void target.offsetWidth; 
+            target.classList.add('page-transition');
+        }
+        
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        const btn = document.querySelector(`.nav-item[onclick="App.showView('${id}')"]`);
+        if(btn) btn.classList.add('active');
+
+        if(window.innerWidth < 768) {
+          document.getElementById('sidebar').classList.add('-translate-x-full');
+          document.getElementById('sidebar-overlay').classList.add('hidden');
+        }
+
+        if(id === 'analytics') requestAnimationFrame(window.Analytics.render);
+        if(id === 'health') requestAnimationFrame(window.Health.render);
+        if(id === 'security') requestAnimationFrame(window.Security.renderPage);
+      },
+      toggleSidebar: () => {
+        document.getElementById('sidebar').classList.toggle('-translate-x-full');
+        document.getElementById('sidebar-overlay').classList.toggle('hidden');
+      }
+    };
+
+    // Global Registry for Debounced Handlers ensuring they aren't recreated on keyup
+    window.Handlers = {
+      filterUsers: App.debounce(() => window.Users.filter(), 250),
+      filterSupport: App.debounce(() => window.Support.filterUsers(), 250),
+      filterSecurity: App.debounce(() => window.Security.applyFilter(), 250)
+    };
+
+    // ==========================================
+    // INDEXEDDB LOCAL CACHING ENGINE (Ultra-Fast Load)
+    // ==========================================
+    const IDB = {
+        db: null,
+        init: async () => {
+            return new Promise((resolve) => {
+                const req = indexedDB.open('GospelAdminDB', 1);
+                req.onupgradeneeded = e => {
+                    const db = e.target.result;
+                    if(!db.objectStoreNames.contains('cache')) {
+                        db.createObjectStore('cache');
+                    }
+                };
+                req.onsuccess = e => { IDB.db = e.target.result; resolve(); };
+                req.onerror = e => resolve(); // Graceful degrade if IDB is blocked
+            });
+        },
+        set: async (key, val) => {
+            if(!IDB.db) return;
+            return new Promise(resolve => {
+                const tx = IDB.db.transaction('cache', 'readwrite');
+                tx.objectStore('cache').put(val, key);
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => resolve();
+            });
+        },
+        get: async (key) => {
+            if(!IDB.db) return null;
+            return new Promise(resolve => {
+                const tx = IDB.db.transaction('cache', 'readonly');
+                const req = tx.objectStore('cache').get(key);
+                req.onsuccess = e => resolve(e.target.result);
+                req.onerror = () => resolve(null);
+            });
+        }
+    };
+
+    // ==========================================
+    // DB CONNECTION LISTENER
+    // ==========================================
+    const connectedRef = ref(db, ".info/connected");
+    onValue(connectedRef, (snap) => {
+      const isConnected = snap.val() === true;
+      const dashStatus = document.getElementById('dash-conn-status');
+      const dashBadge = document.getElementById('dash-realtime-badge');
+      if(dashStatus) {
+        if(isConnected) {
+          dashStatus.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Secured via WebSocket';
+          dashStatus.classList.replace('text-red-400', 'text-emerald-400');
+          if(dashBadge) { dashBadge.classList.replace('text-red-400', 'text-emerald-400'); dashBadge.classList.replace('bg-red-500/10', 'bg-emerald-500/10'); dashBadge.innerHTML = '<i class="fa-solid fa-circle text-[8px] animate-pulse"></i> Realtime Sync Active'; }
+        } else {
+          dashStatus.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span> Polling connection...';
+          dashStatus.classList.replace('text-emerald-400', 'text-red-400');
+          if(dashBadge) { dashBadge.classList.replace('text-emerald-400', 'text-red-400'); dashBadge.classList.replace('bg-emerald-500/10', 'bg-red-500/10'); dashBadge.innerHTML = '<i class="fa-solid fa-circle-notch text-[8px] fa-spin"></i> Disconnected'; }
+        }
+      }
+    });
+
+    let activeDBListeners =[];
+    let activeChatListeners =[]; 
+
+    window.cachedUsers = {};
+    window.cachedContent = {};
+    window.cachedTickets = {};
+    window.currentPostIdForComments = null;
+    window.currentChatUserId = null;
+    
+    const INIT_TIME = Date.now();
+
+    function handleDBError(error) {
+      if (error.message && error.message.includes("Permission denied")) {
+        document.getElementById('db-rules-warning').classList.remove('hidden');
+        document.getElementById('db-rules-warning').classList.add('flex');
+      } else {
+        App.toast("Database Error: " + (error.message || 'Unknown'), "error");
+      }
+    }
+
+    // Chart Registry
+    window.ChartRegistry = {};
+    function renderChart(id, type, data, options) {
+      const ctx = document.getElementById(id);
+      if(!ctx) return;
+      if (window.ChartRegistry[id]) window.ChartRegistry[id].destroy();
+      window.ChartRegistry[id] = new Chart(ctx, { type, data, options });
+    }
+
+    // ================== ADVANCED BACKGROUND SCHEDULER SYSTEM ==================
+    // Uses a Web Worker to strictly circumvent browser tab inactivity throttling
+    window.Scheduler = {
+        worker: null,
+        init: () => {
+            const workerCode = `
+                let interval;
+                self.onmessage = function(e) {
+                    if (e.data.command === 'start') {
+                        interval = setInterval(() => {
+                            self.postMessage('EXECUTE_CRON_PULSE');
+                        }, 10000); // 10-second precise heartbeat
+                    } else if (e.data.command === 'stop') {
+                        clearInterval(interval);
+                    }
+                };
+            `;
+            const blob = new Blob([workerCode], { type: 'application/javascript' });
+            window.Scheduler.worker = new Worker(URL.createObjectURL(blob));
+            
+            window.Scheduler.worker.onmessage = function(e) {
+                if (e.data === 'EXECUTE_CRON_PULSE') {
+                    window.Scheduler.processAutoPublish();
+                }
+            };
+            window.Scheduler.worker.postMessage({ command: 'start' });
+            setTimeout(window.Scheduler.processAutoPublish, 2000); // Initial immediate pass
+        },
+        processAutoPublish: async () => {
+            if (!window.cachedContent) return;
+            const now = Date.now();
+            const updates = {};
+            let autoPublishedCount = 0;
+            
+            Object.entries(window.cachedContent).forEach(([id, c]) => {
+                // Highly robust verification check
+                if (c.status === 'Scheduled' && c.scheduledFor && c.scheduledFor <= now) {
+                    updates[`content/${id}/status`] = 'Published';
+                    updates[`content/${id}/publishedAt`] = now;
+                    // Intentionally set scheduledFor to null to instruct Firebase to delete the key physically
+                    updates[`content/${id}/scheduledFor`] = null; 
+                    autoPublishedCount++;
+                    window.Security.log('SYSTEM', 'AUTO_PUBLISH', 'Background Scheduler Engine', `Autonomous Execution: ${c.title}`);
+                }
+            });
+            
+            if (autoPublishedCount > 0) {
+                try {
+                    await update(ref(db, '/'), updates);
+                    App.toast(`Background Node Executed: ${autoPublishedCount} mathematical trigger(s) published live!`, 'success');
+                } catch(e) {
+                    console.error("Scheduler Write Rejection:", e);
+                }
+            }
+        }
+    };
+
+    // ================== NOTIFICATION SYSTEM ==================
+    window.Notifications = {
+       add: (log) => {
+           if(log.timestamp <= INIT_TIME) return; 
+           const audio = document.getElementById('notif-sound');
+           if(audio) audio.play().catch(()=>{});
+
+           if(log.type === 'SUPPORT' || log.action === 'CREATE' || log.type === 'AUTH') {
+               App.toast(`Activity: ${log.action} - ${log.identity}`, 'info');
+           }
+       },
+       initListener: () => {
+           const q = query(ref(db, 'audit'), limitToLast(1));
+           onChildAdded(q, (snapshot) => {
+               if(snapshot.exists()) Notifications.add(snapshot.val());
+           });
+       }
+    };
+
+    // ================== USERS MODULE ==================
+    window.Users = {
+      load: async () => {
+        // LOCAL FIRST: IndexedDB Load
+        const cached = await IDB.get('users');
+        if(cached && Object.keys(cached).length > 0) {
+            window.cachedUsers = cached;
+            requestAnimationFrame(() => { Users.filter(); Support.renderUserList(); });
+        }
+
+        // FIREBASE SYNC: Overwrite and update
+        const q = query(ref(db, 'users')); 
+        const unsub = onValue(q, snapshot => {
+          const tbody = document.getElementById('usersTable');
+          if(!snapshot.exists()) { 
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center p-8 text-slate-500 font-bold text-sm">No user directory available.</td></tr>'; 
+            document.getElementById('stat-users').innerText='0'; window.cachedUsers={}; 
+            IDB.set('users', {}); Support.renderUserList(); return; 
+          }
+          
+          const val = snapshot.val();
+          window.cachedUsers = val;
+          IDB.set('users', val); // Async persist
+          requestAnimationFrame(() => { Users.filter(); Support.renderUserList(); }); 
+        }, handleDBError);
+        activeDBListeners.push(unsub);
+      },
+      filter: () => {
+         const search = (document.getElementById('userSearch').value || '').toLowerCase();
+         const roleFilter = document.getElementById('userRoleFilter').value;
+         let html = ''; let count = 0;
+
+         Object.entries(window.cachedUsers).forEach(([id, u]) => {
+            const emailDisp = decodeEmail(id);
+            const nameSearch = (u.name || '').toLowerCase();
+            const role = u.role || 'User';
+
+            if(search && !nameSearch.includes(search) && !emailDisp.toLowerCase().includes(search)) return;
+            if(roleFilter && role !== roleFilter) return;
+
+            count++;
+            const dateStr = new Date(u.lastLogin || u.joinedAt || Date.now()).toLocaleDateString();
+            const roleColor = role === 'Admin' ? 'text-purple-400 bg-purple-400/10 border-purple-500/30' : (role === 'Moderator' ? 'text-blue-400 bg-blue-400/10 border-blue-500/30' : 'text-slate-300 bg-slate-800 border-slate-700');
+            const statusColor = u.status === 'Suspended' ? 'text-red-400 bg-red-400/10 border-red-500/30' : 'text-emerald-400 bg-emerald-400/10 border-emerald-500/30';
+            const initial = u.name ? u.name.charAt(0).toUpperCase() : '?';
+            
+            html += `
+              <tr class="hover:bg-slate-800/40 transition border-b border-slate-800/50">
+                <td class="p-3 pl-5"><input type="checkbox" class="user-checkbox rounded border-slate-600 bg-slate-900 cursor-pointer w-4 h-4 accent-[#8b5cf6]" value="${id}"></td>
+                <td class="p-3 flex items-center gap-4 py-4">
+                  <div class="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-[15px] font-black text-white shadow-inner">${initial}</div>
+                  <div><div class="text-white font-bold text-[14px]">${u.name || 'Unknown User'}</div><div class="text-[12px] font-medium text-slate-500">${emailDisp}</div></div>
+                </td>
+                <td class="p-3"><span class="px-3 py-1.5 rounded-lg border text-[11px] font-bold ${roleColor}">${role}</span></td>
+                <td class="p-3"><span class="px-3 py-1.5 rounded-lg border text-[11px] font-bold flex items-center w-fit gap-2 ${statusColor}"><i class="fa-solid fa-circle text-[7px] shadow-sm"></i>${u.status || 'Active'}</span></td>
+                <td class="p-3 text-slate-400 text-[12px] font-semibold">${dateStr}</td>
+                <td class="p-3 text-right pr-5 flex justify-end gap-2">
+                  <button onclick="Users.openModal('${id}')" title="Edit Profile" class="btn text-slate-400 hover:text-white bg-slate-800 hover:bg-[#8b5cf6] w-9 h-9 flex items-center justify-center rounded-xl border border-slate-700 shadow-sm"><i class="fa-solid fa-pen"></i></button>
+                  <button onclick="Users.delete('${id}')" title="Terminate" class="btn text-slate-400 hover:text-white bg-slate-800 hover:bg-red-600 w-9 h-9 flex items-center justify-center rounded-xl border border-slate-700 shadow-sm"><i class="fa-solid fa-trash"></i></button>
+                </td>
+              </tr>
+            `;
+         });
+         document.getElementById('usersTable').innerHTML = html || '<tr><td colspan="6" class="text-center p-8 text-slate-500 font-bold text-sm">No queries match active parameters.</td></tr>';
+         document.getElementById('sb-user-count').innerText = count;
+         document.getElementById('stat-users').innerText = count.toLocaleString();
+      },
+      openModal: (id = null) => {
+        document.getElementById('userId').value = id || '';
+        const emailInput = document.getElementById('userEmail');
+        
+        if (id && window.cachedUsers[id]) {
+            const u = window.cachedUsers[id];
+            document.getElementById('userModalTitle').innerHTML = '<i class="fa-solid fa-user-shield text-[#8b5cf6] mr-2"></i> Edit Account Credentials';
+            emailInput.value = u.email || decodeEmail(id);
+            emailInput.readOnly = true; emailInput.classList.add('opacity-40', 'cursor-not-allowed');
+            
+            document.getElementById('userName').value = u.name || '';
+            document.getElementById('userPassword').value = u.password || '';
+            document.getElementById('userRole').value = u.role || 'User';
+            document.getElementById('userStatus').value = u.status || 'Active';
+        } else {
+            document.getElementById('userModalTitle').innerHTML = '<i class="fa-solid fa-user-plus text-[#8b5cf6] mr-2"></i> Provision New Identity';
+            emailInput.value = ''; emailInput.readOnly = false; emailInput.classList.remove('opacity-40', 'cursor-not-allowed');
+            document.getElementById('userName').value = '';
+            document.getElementById('userPassword').value = '';
+            document.getElementById('userRole').value = 'User';
+            document.getElementById('userStatus').value = 'Active';
+        }
+        
+        document.getElementById('modal-user').classList.remove('hidden'); document.getElementById('modal-user').classList.add('flex');
+      },
+      save: async () => {
+        const btn = document.getElementById('btnSaveUser');
+        const ogText = btn.innerHTML;
+        
+        const idRaw = document.getElementById('userId').value;
+        const email = document.getElementById('userEmail').value.trim();
+        const name = document.getElementById('userName').value.trim();
+        const password = document.getElementById('userPassword').value;
+        const role = document.getElementById('userRole').value;
+        const status = document.getElementById('userStatus').value;
+
+        if(!email || !name || !password) return App.toast('Absolute validation failure: Missing inputs.', 'error');
+        
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Writing DB...';
+
+        const dbId = idRaw || encodeEmail(email);
+        try {
+            const updates = { name, email, password, role, status };
+            if(!idRaw) updates.joinedAt = Date.now();
+            await update(ref(db, `users/${dbId}`), updates);
+            document.getElementById('modal-user').classList.add('hidden');
+            App.toast(`Identity ${idRaw ? 'updated' : 'provisioned'} successfully.`, 'success');
+            window.Security.log('USER', idRaw ? 'UPDATE_ROLE_STATUS' : 'CREATE', 'Admin', `Target Identity: ${email}`);
+        } catch(e) { 
+            handleDBError(e); 
+        } finally {
+            if(btn) { btn.disabled = false; btn.innerHTML = ogText; }
+        }
+      },
+      delete: async (id) => { 
+        if(confirm('CRITICAL ACTION: Permanently wipe this user record? This will execute physical deletion.')) {
+          try { await remove(ref(db, `users/${id}`)); App.toast('User mathematically deleted from DB.', 'success'); window.Security.log('USER', 'DELETE', 'Admin', 'Deleted User Key: '+id); } 
+          catch(e) { handleDBError(e); }
+        }
+      },
+      toggleAll: (checkbox) => { document.querySelectorAll('.user-checkbox').forEach(cb => cb.checked = checkbox.checked); },
+      bulkDelete: async () => {
+        const selected = Array.from(document.querySelectorAll('.user-checkbox:checked')).map(cb => cb.value);
+        if(selected.length === 0) return App.toast('Queue empty. Select target nodes first.', 'warning');
+        if(confirm(`CRITICAL BATCH: Wipe ${selected.length} records simultaneously?`)) {
+          try {
+            await Promise.all(selected.map(id => remove(ref(db, `users/${id}`))));
+            document.getElementById('checkAll').checked = false;
+            App.toast(`Successfully detached ${selected.length} users.`, 'success');
+            window.Security.log('USER', 'BULK_DELETE', 'Admin', `Wiped ${selected.length} user nodes.`);
+          } catch(e) { handleDBError(e); }
+        }
+      }
+    };
+
+    // ================== ABOUT PAGE EDITOR MODULE ==================
+    window.About = {
+        load: async () => {
+            // LOCAL FIRST
+            const cached = await IDB.get('about');
+            if(cached) {
+                About.renderInputs(cached);
+            }
+
+            // FIREBASE SYNC
+            const refAbout = ref(db, 'about');
+            const unsub = onValue(refAbout, snap => {
+                const data = snap.exists() ? snap.val() : {
+                    profileImg: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200",
+                    title: "About Minister Michael", subtitle: "Prophet, Teacher, and Watchman",
+                    bodyHTML: "<p>Minister Michael is a prophetic voice raised by God for such a time as this.</p>",
+                    quoteText: "We do not prophecy for fame...", quoteAuthor: "Minister Michael"
+                };
+                IDB.set('about', data);
+                requestAnimationFrame(() => About.renderInputs(data));
+            }, handleDBError);
+            activeDBListeners.push(unsub);
+        },
+        renderInputs: (data) => {
+            document.getElementById('aboutImgPreview').src = data.profileImg;
+            document.getElementById('aboutImgBase64').value = data.profileImg;
+            document.getElementById('aboutTitle').value = data.title || '';
+            document.getElementById('aboutSubtitle').value = data.subtitle || '';
+            document.getElementById('aboutQuoteText').value = data.quoteText || '';
+            document.getElementById('aboutQuoteAuthor').value = data.quoteAuthor || '';
+            document.getElementById('aboutBodyHTML').value = data.bodyHTML || '';
+        },
+        handleImageUpload: (event, previewId, base64Id) => {
+             const file = event.target.files[0];
+             if(!file) return;
+             if(file.size > 2 * 1024 * 1024) { App.toast('Media Rejected: Max constraint 2MB.', 'warning'); return; }
+
+             const reader = new FileReader();
+             reader.onload = (e) => {
+                 const img = new Image();
+                 img.src = e.target.result;
+                 img.onload = () => {
+                     const canvas = document.createElement('canvas');
+                     const MAX_WIDTH = 800; // Optimal Web Resolution
+                     let width = img.width; let height = img.height;
+                     if (width > MAX_WIDTH) { height = Math.round((height * MAX_WIDTH) / width); width = MAX_WIDTH; }
+                     canvas.width = width; canvas.height = height;
+                     const ctx = canvas.getContext('2d');
+                     ctx.drawImage(img, 0, 0, width, height);
+                     const compressed = canvas.toDataURL('image/jpeg', 0.85);
+
+                     const prevEl = document.getElementById(previewId);
+                     if(prevEl) { prevEl.src = compressed; prevEl.classList.remove('hidden'); }
+                     const b64El = document.getElementById(base64Id);
+                     if(b64El) b64El.value = compressed;
+                     
+                     App.toast('Image successfully processed.', 'success');
+                 }
+             };
+             reader.readAsDataURL(file);
+        },
+        injectImageToBody: (event) => {
+             const file = event.target.files[0];
+             if(!file) return;
+             if(file.size > 3 * 1024 * 1024) { App.toast('Payload too large. Max 3MB for inline body images.', 'warning'); return; }
+
+             App.toast('Processing rich-text image payload...', 'loading');
+             
+             const reader = new FileReader();
+             reader.onload = (e) => {
+                 const img = new Image();
+                 img.src = e.target.result;
+                 img.onload = () => {
+                     const canvas = document.createElement('canvas');
+                     const MAX_WIDTH = 1000; 
+                     let width = img.width; let height = img.height;
+                     if (width > MAX_WIDTH) { height = Math.round((height * MAX_WIDTH) / width); width = MAX_WIDTH; }
+                     canvas.width = width; canvas.height = height;
+                     const ctx = canvas.getContext('2d');
+                     ctx.drawImage(img, 0, 0, width, height);
+                     const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+
+                     const textArea = document.getElementById('aboutBodyHTML');
+                     const startPos = textArea.selectionStart;
+                     const endPos = textArea.selectionEnd;
+                     
+                     // Generate Professional Styled Image Tag
+                     const imgTag = `\n<img src="${compressedBase64}" alt="Editorial Content" class="embedded-content-img" />\n`;
+                     
+                     textArea.value = textArea.value.substring(0, startPos) + imgTag + textArea.value.substring(endPos, textArea.value.length);
+                     App.toast('Inline image mathematically injected at cursor.', 'success');
+                 }
+             };
+             reader.readAsDataURL(file);
+        },
+        save: async () => {
+            const btn = document.getElementById('aboutSaveBtn');
+            const ogText = btn.innerHTML;
+            
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Writing DB...';
+            
+            try {
+                const payload = {
+                    profileImg: document.getElementById('aboutImgBase64').value,
+                    title: document.getElementById('aboutTitle').value.trim(),
+                    subtitle: document.getElementById('aboutSubtitle').value.trim(),
+                    quoteText: document.getElementById('aboutQuoteText').value.trim(),
+                    quoteAuthor: document.getElementById('aboutQuoteAuthor').value.trim(),
+                    bodyHTML: document.getElementById('aboutBodyHTML').value.trim()
+                };
+                
+                await set(ref(db, 'about'), payload);
+                App.toast('Public Profile Database State Overwritten.', 'success');
+                window.Security.log('CONTENT', 'UPDATE_ABOUT', 'Admin', 'Reconfigured System About Page Context');
+            } catch(e) {
+                handleDBError(e);
+            } finally {
+                if(btn) { btn.disabled = false; btn.innerHTML = ogText; }
+            }
+        }
+    };
+
+    // ================== CONTENT MODULE ==================
+    window.Content = {
+      load: async () => {
+        // LOCAL FIRST
+        const cached = await IDB.get('content');
+        if(cached) {
+            window.cachedContent = cached;
+            requestAnimationFrame(() => { Content.renderTable(); window.Analytics.render(); });
+        }
+
+        // FIREBASE SYNC
+        const q = query(ref(db, 'content'));
+        const unsub = onValue(q, snapshot => {
+          if(!snapshot.exists()) { 
+            document.getElementById('contentTable').innerHTML = '<tr><td colspan="6" class="text-center p-8 text-slate-500 font-bold text-sm">No payload repositories exist.</td></tr>'; 
+            document.getElementById('stat-articles').innerText='0'; window.cachedContent = {}; 
+            IDB.set('content', {}); return; 
+          }
+          
+          const val = snapshot.val();
+          window.cachedContent = val;
+          IDB.set('content', val);
+          requestAnimationFrame(() => { Content.renderTable(); window.Analytics.render(); });
+        }, handleDBError);
+        activeDBListeners.push(unsub);
+      },
+      renderTable: () => {
+          const tbody = document.getElementById('contentTable');
+          let html = ''; let count = 0; let totEng = 0;
+          const now = Date.now();
+
+          Object.entries(window.cachedContent).reverse().forEach(([id, c]) => {
+            // Lazy Evaluation Fallback logic for client-side rendering accuracy
+            if(c.status === 'Scheduled' && c.scheduledFor && c.scheduledFor <= now) {
+                c.status = 'Published'; // Force visual logic natively
+            }
+            if(c.status === 'Published') count++;
+            
+            const v = c.views || 0; 
+            const l = c.likes || 0; 
+            const s = c.shares || 0;
+            const cmtCount = c.comments ? Object.keys(c.comments).length : 0;
+            totEng += (l + s + cmtCount);
+
+            const dateStr = new Date(c.updated || Date.now()).toLocaleDateString();
+            
+            let statC = 'text-amber-400 bg-amber-400/10 border-amber-500/30';
+            if (c.status === 'Published') statC = 'text-emerald-400 bg-emerald-400/10 border-emerald-500/30';
+            if (c.status === 'Scheduled') statC = 'text-blue-400 bg-blue-400/10 border-blue-500/30';
+
+            const pinIcon = c.pinned ? '<i class="fa-solid fa-thumbtack text-[#8b5cf6] mr-2 drop-shadow-md" title="Pinned"></i>' : '';
+            const thumb = c.image ? `<img src="${c.image}" class="w-10 h-10 rounded-lg object-cover border border-slate-700 shadow-sm shrink-0">` : `<div class="w-10 h-10 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-500 shrink-0"><i class="fa-regular fa-image"></i></div>`;
+            
+            html += `
+              <tr class="hover:bg-slate-800/40 transition border-b border-slate-800/50">
+                <td class="p-3 pl-5 flex items-center gap-4 py-4">
+                  ${thumb}
+                  <div><div class="text-white font-bold text-[14px] flex items-center">${pinIcon}${c.title || 'Untitled Vector'}</div><div class="text-[11px] font-bold text-slate-500 mt-1 uppercase tracking-wider">Node: ${id.slice(-8)}</div></div>
+                </td>
+                <td class="p-3 text-slate-300 text-[12px] font-bold">${c.category || 'General'}</td>
+                <td class="p-3"><span class="px-3 py-1.5 rounded-lg border text-[11px] font-bold ${statC}">${c.status || 'Draft'}</span></td>
+                <td class="p-3"><div class="text-[12px] text-slate-300 font-bold flex items-center gap-3">
+                  <span title="Views" class="flex items-center gap-1.5"><i class="fa-solid fa-eye text-[#0ea5e9]"></i>${v}</span>
+                  <span title="Likes" class="flex items-center gap-1.5"><i class="fa-solid fa-heart text-red-500"></i>${l}</span>
+                  <span title="Shares" class="flex items-center gap-1.5"><i class="fa-solid fa-share text-[#10b981]"></i>${s}</span>
+                  <span title="Comments" class="flex items-center gap-1.5"><i class="fa-solid fa-comment text-[#8b5cf6]"></i>${cmtCount}</span>
+                </div></td>
+                <td class="p-3 text-slate-400 text-[12px] font-semibold">${dateStr}</td>
+                <td class="p-3 text-right pr-5 flex justify-end gap-2 items-center">
+                  <button onclick="Content.openModal('${id}')" title="Reconfigure" class="btn text-slate-400 hover:text-white bg-slate-800 hover:bg-[#8b5cf6] w-9 h-9 flex items-center justify-center rounded-xl border border-slate-700 shadow-sm"><i class="fa-solid fa-pen"></i></button>
+                  <button onclick="Content.manageComments('${id}')" title="Moderate Thread" class="btn text-slate-400 hover:text-white bg-slate-800 hover:bg-blue-500 w-9 h-9 flex items-center justify-center rounded-xl border border-slate-700 shadow-sm"><i class="fa-solid fa-comments"></i></button>
+                  <button onclick="Content.delete('${id}')" title="Purge Post" class="btn text-slate-400 hover:text-white bg-slate-800 hover:bg-red-600 w-9 h-9 flex items-center justify-center rounded-xl border border-slate-700 shadow-sm"><i class="fa-solid fa-trash"></i></button>
+                </td>
+              </tr>
+            `;
+          });
+          tbody.innerHTML = html;
+          document.getElementById('stat-articles').innerText = count.toLocaleString();
+          if(document.getElementById('stat-engagement')) document.getElementById('stat-engagement').innerText = totEng.toLocaleString();
+      },
+      handleImageUpload: (event) => {
+         const file = event.target.files[0];
+         if(!file) return;
+         if(file.size > 2 * 1024 * 1024) { App.toast('Compression Failure: File exceeds 2MB constraint.', 'warning'); return; }
+
+         const reader = new FileReader();
+         reader.onload = (e) => {
+             const img = new Image();
+             img.src = e.target.result;
+             img.onload = () => {
+                 const canvas = document.createElement('canvas');
+                 const MAX_WIDTH = 800;
+                 let width = img.width; let height = img.height;
+                 if (width > MAX_WIDTH) { height = Math.round((height * MAX_WIDTH) / width); width = MAX_WIDTH; }
+                 canvas.width = width; canvas.height = height;
+                 const ctx = canvas.getContext('2d');
+                 ctx.drawImage(img, 0, 0, width, height);
+                 const compressedBase64 = canvas.toDataURL('image/jpeg', 0.85);
+
+                 document.getElementById('contentImagePreview').src = compressedBase64;
+                 document.getElementById('contentImagePreview').classList.remove('hidden');
+                 document.getElementById('contentImageBase64').value = compressedBase64;
+             }
+         };
+         reader.readAsDataURL(file);
+      },
+      toggleScheduleInput: () => {
+          const status = document.getElementById('contentStatus').value;
+          const container = document.getElementById('scheduleContainer');
+          if(status === 'Scheduled') {
+              container.classList.remove('hidden');
+          } else {
+              container.classList.add('hidden');
+          }
+      },
+      openModal: (id = null) => {
+        document.getElementById('contentId').value = id || '';
+        document.getElementById('contentImageFile').value = '';
+        const prev = document.getElementById('contentImagePreview');
+        const b64 = document.getElementById('contentImageBase64');
+
+        if(id && window.cachedContent[id]) {
+            const c = window.cachedContent[id];
+            document.getElementById('contentModalTitle').innerHTML = '<i class="fa-solid fa-pen-to-square text-[#8b5cf6] mr-2"></i> Alter Data Vector';
+            document.getElementById('contentTitle').value = c.title || '';
+            
+            if(c.image) { prev.src = c.image; prev.classList.remove('hidden'); b64.value = c.image; } 
+            else { prev.src = ''; prev.classList.add('hidden'); b64.value = ''; }
+
+            document.getElementById('contentBody').value = c.body || '';
+            document.getElementById('contentCategory').value = c.category || 'Prophecy';
+            document.getElementById('contentStatus').value = c.status || 'Published';
+            document.getElementById('contentLikes').value = c.likes || 0;
+            document.getElementById('contentShares').value = c.shares || 0;
+            document.getElementById('contentPinned').checked = !!c.pinned;
+
+            if (c.status === 'Scheduled' && c.scheduledFor) {
+                const date = new Date(c.scheduledFor);
+                // Adjust for local timezone offset to display correctly in datetime-local
+                date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+                document.getElementById('contentScheduledFor').value = date.toISOString().slice(0, 16);
+            } else {
+                document.getElementById('contentScheduledFor').value = '';
+            }
+
+        } else {
+            document.getElementById('contentModalTitle').innerHTML = '<i class="fa-solid fa-pen-nib text-[#0ea5e9] mr-2"></i> Instantiate New Payload';
+            document.getElementById('contentTitle').value = '';
+            prev.src = ''; prev.classList.add('hidden'); b64.value = '';
+            document.getElementById('contentBody').value = '';
+            document.getElementById('contentCategory').value = 'Prophecy';
+            document.getElementById('contentStatus').value = 'Published';
+            document.getElementById('contentLikes').value = 0;
+            document.getElementById('contentShares').value = 0;
+            document.getElementById('contentPinned').checked = false;
+            document.getElementById('contentScheduledFor').value = '';
+        }
+        
+        Content.toggleScheduleInput();
+        document.getElementById('modal-content').classList.remove('hidden'); document.getElementById('modal-content').classList.add('flex');
+      },
+      save: async () => {
+        const btn = document.getElementById('btnSaveContent');
+        const ogText = btn.innerHTML;
+        
+        const id = document.getElementById('contentId').value;
+        const title = document.getElementById('contentTitle').value.trim();
+        const image = document.getElementById('contentImageBase64').value;
+        const body = document.getElementById('contentBody').value.trim();
+        const category = document.getElementById('contentCategory').value.trim();
+        const status = document.getElementById('contentStatus').value;
+        const likes = parseInt(document.getElementById('contentLikes').value) || 0;
+        const shares = parseInt(document.getElementById('contentShares').value) || 0;
+        const pinned = document.getElementById('contentPinned').checked;
+
+        let scheduledFor = null;
+        if (status === 'Scheduled') {
+            const dtRaw = document.getElementById('contentScheduledFor').value;
+            if (!dtRaw) return App.toast('Schedule time constraint is required to initialize scheduled trigger.', 'error');
+            scheduledFor = new Date(dtRaw).getTime();
+            if (scheduledFor < Date.now()) return App.toast('Cannot schedule logic chronologically backward. Pick future time.', 'error');
+        }
+
+        if(!title) return App.toast('Primary Identifier (Title) is strictly required.', 'error');
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Submitting...';
+
+        const payload = { title, image, body, category, status, likes, shares, pinned, updated: Date.now() };
+        
+        // Critical Integrity Mechanism: Firebase deletes the key physically when null is explicitly passed
+        payload.scheduledFor = scheduledFor || null;
+
+        try {
+            if(id) {
+                await update(ref(db, `content/${id}`), payload);
+                App.toast('Post state modified correctly.', 'success');
+                window.Security.log('CONTENT', 'UPDATE', 'Admin', 'Reconfigured Post Title: '+title);
+            } else {
+                payload.views = 0;
+                await push(ref(db, 'content'), payload);
+                App.toast('Payload deployed to production architecture.', 'success');
+                window.Security.log('CONTENT', 'CREATE', 'Admin', 'Created New Entity: '+title);
+            }
+            document.getElementById('modal-content').classList.add('hidden');
+        } catch(e) { 
+            handleDBError(e); 
+        } finally {
+            if(btn) { btn.disabled = false; btn.innerHTML = ogText; }
+        }
+      },
+      delete: async (id) => { 
+        if(confirm('CRITICAL ACTION: Permanently wipe this post from memory arrays?')) {
+          try { await remove(ref(db, `content/${id}`)); App.toast('Node eradicated successfully.', 'success'); window.Security.log('CONTENT', 'DELETE', 'Admin', 'Destructive Wipe Post ID: '+id); } catch(e) { handleDBError(e); }
+        }
+      },
+      manageComments: (id) => {
+        window.currentPostIdForComments = id;
+        const post = window.cachedContent[id];
+        const container = document.getElementById('commentsList');
+        
+        if(!post || !post.comments) {
+            container.innerHTML = '<div class="bg-slate-900/50 rounded-2xl p-10 flex flex-col items-center justify-center border border-slate-800 shadow-inner"><i class="fa-solid fa-comment-slash text-4xl text-slate-700 mb-3"></i><span class="text-slate-400 font-bold text-[15px]">Zero traffic on this thread.</span></div>';
+        } else {
+            let html = '';
+            Object.entries(post.comments).forEach(([cId, cmt]) => {
+                const dateStr = new Date(cmt.date).toLocaleString();
+                html += `
+                <div class="bg-[#050a14] p-5 rounded-2xl border border-slate-800 shadow-md">
+                    <div class="flex justify-between items-start mb-3 border-b border-slate-800 pb-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-white shadow-sm" style="background: ${cmt.avatarColor||'#8b5cf6'}">${cmt.user.charAt(0)}</div>
+                            <div>
+                                <span class="font-bold text-white text-sm block leading-tight">${cmt.user}</span>
+                                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">${dateStr}</span>
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="Content.editComment('${cId}')" class="btn text-slate-400 hover:text-white bg-slate-800 hover:bg-[#8b5cf6] w-8 h-8 flex items-center justify-center rounded-lg border border-slate-700"><i class="fa-solid fa-pen text-xs"></i></button>
+                            <button onclick="Content.deleteComment('${cId}')" class="btn text-slate-400 hover:text-white bg-slate-800 hover:bg-red-600 w-8 h-8 flex items-center justify-center rounded-lg border border-slate-700"><i class="fa-solid fa-trash text-xs"></i></button>
+                        </div>
+                    </div>
+                    <div class="text-[14.5px] text-slate-300 font-medium leading-relaxed" style="word-break: break-word; white-space: pre-wrap;">${cmt.text}</div>
+                </div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        document.getElementById('modal-comments').classList.remove('hidden'); document.getElementById('modal-comments').classList.add('flex');
+      },
+      editComment: async (cId) => {
+         const postId = window.currentPostIdForComments;
+         const currentText = window.cachedContent[postId].comments[cId].text;
+         const newText = prompt("System Override: Edit Client Comment", currentText);
+         
+         if(newText !== null && newText.trim() !== "") {
+             try {
+                 await update(ref(db, `content/${postId}/comments/${cId}`), { text: newText.trim() });
+                 App.toast('State rewritten correctly.', 'success');
+                 Security.log('CONTENT', 'UPDATE_COMMENT', 'Admin', `Forced edit on comment ID ${cId}`);
+                 setTimeout(() => Content.manageComments(postId), 200);
+             } catch (e) { handleDBError(e); }
+         }
+      },
+      deleteComment: async (cId) => {
+         if(!confirm('O(1) Memory Wipe: Purge this user comment?')) return;
+         const postId = window.currentPostIdForComments;
+         try {
+             await remove(ref(db, `content/${postId}/comments/${cId}`));
+             App.toast('Node eliminated.', 'success');
+             Security.log('CONTENT', 'DELETE_COMMENT', 'Admin', `Wiped comment ID ${cId}`);
+             setTimeout(() => Content.manageComments(postId), 200);
+         } catch (e) { handleDBError(e); }
+      }
+    };
+
+    // ================== ADVANCED SUPPORT & CHAT MODULE ==================
+    window.Support = {
+      toggleSidebar: () => {
+         const sb = document.getElementById('supportUserSidebar');
+         sb.classList.toggle('-translate-x-full');
+      },
+      loadTickets: async () => {
+         // LOCAL FIRST
+         const cached = await IDB.get('tickets');
+         if(cached) {
+            window.cachedTickets = cached;
+            requestAnimationFrame(() => Support.renderUserList());
+         }
+
+         // FIREBASE SYNC
+         const q = query(ref(db, 'support_chats'));
+         onValue(q, snap => {
+             const data = snap.exists() ? snap.val() : {};
+             window.cachedTickets = data;
+             IDB.set('tickets', data);
+             requestAnimationFrame(() => Support.renderUserList());
+         }, handleDBError);
+      },
+      renderUserList: () => {
+         const search = (document.getElementById('supportSearch').value || '').toLowerCase();
+         const container = document.getElementById('supportUserList');
+         if(!window.cachedUsers || Object.keys(window.cachedUsers).length === 0) {
+             container.innerHTML = '<div class="p-10 flex flex-col items-center justify-center text-center"><i class="fa-solid fa-ghost text-4xl text-slate-700 mb-3"></i><span class="text-xs font-bold text-slate-500 uppercase tracking-widest">No Clients Registered</span></div>';
+             return;
+         }
+
+         let html = '';
+         let globalUnread = 0;
+
+         const usersArr = Object.entries(window.cachedUsers).map(([id, u]) => {
+             const chatData = window.cachedTickets[id];
+             u.lastActivity = chatData && chatData.lastActivity ? chatData.lastActivity : 0;
+             u.unreadAdmin = chatData && chatData.unreadAdmin ? true : false;
+             return {id, ...u};
+         }).sort((a, b) => b.lastActivity - a.lastActivity);
+
+         usersArr.forEach((u) => {
+            const emailDisp = decodeEmail(u.id);
+            if(search && !(u.name||'').toLowerCase().includes(search) && !emailDisp.toLowerCase().includes(search)) return;
+            
+            const initial = u.name ? u.name.charAt(0).toUpperCase() : '?';
+            const isActive = window.currentChatUserId === u.id ? 'active' : '';
+            const isUnread = u.unreadAdmin ? 'unread' : '';
+            if(u.unreadAdmin) globalUnread++;
+
+            html += `
+                <div class="p-4 flex items-center gap-4 cursor-pointer hover:bg-slate-800/40 transition chat-user-item ${isActive} ${isUnread}" onclick="Support.openChat('${u.id}')">
+                    <div class="w-12 h-12 rounded-full ${u.unreadAdmin ? 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.4)] text-white' : 'bg-[#0a101f] border border-slate-700 text-slate-300'} flex items-center justify-center text-base font-black shrink-0 transition-all">${initial}</div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-white font-extrabold text-[14.5px] truncate flex justify-between items-center">
+                           <span>${u.name || 'Unknown'}</span>
+                           ${u.unreadAdmin ? '<span class="w-2.5 h-2.5 rounded-full bg-red-500 shadow-sm animate-pulse"></span>' : ''}
+                        </div>
+                        <div class="text-[12px] font-medium text-slate-500 truncate mt-0.5">${emailDisp}</div>
+                    </div>
+                </div>
+            `;
+         });
+         container.innerHTML = html;
+
+         const mainBadge = document.getElementById('sb-support-unread');
+         if(globalUnread > 0) { mainBadge.classList.remove('hidden'); } else { mainBadge.classList.add('hidden'); }
+      },
+      filterUsers: () => Support.renderUserList(),
+      
+      openChat: async (userId) => {
+         window.currentChatUserId = userId;
+         
+         if(window.cachedTickets[userId] && window.cachedTickets[userId].unreadAdmin) {
+             await update(ref(db, `support_chats/${userId}`), { unreadAdmin: false });
+         }
+         Support.renderUserList(); 
+         
+         if(window.innerWidth < 768) { Support.toggleSidebar(); }
+         
+         const u = window.cachedUsers[userId];
+         document.getElementById('supportEmptyState').classList.add('hidden');
+         document.getElementById('supportChatHeader').classList.remove('hidden');
+         document.getElementById('supportMessages').classList.remove('hidden');
+         document.getElementById('supportInputArea').classList.remove('hidden');
+         document.getElementById('supportInputArea').classList.add('flex');
+         
+         document.getElementById('schatName').innerText = u.name || 'Unknown Protocol';
+         document.getElementById('schatAvatar').innerText = u.name ? u.name.charAt(0).toUpperCase() : '?';
+
+         // Purge old listeners properly
+         activeChatListeners.forEach(unsub => { if(typeof unsub === 'function') unsub(); }); 
+         activeChatListeners =[];
+         
+         document.getElementById('supportMessages').innerHTML = ''; // Wipe DOM buffer
+         
+         const chatRef = ref(db, `support_chats/${userId}/messages`);
+         const container = document.getElementById('supportMessages');
+         
+         // Triple-Tier Optimization Listeners
+         activeChatListeners.push(onChildAdded(chatRef, snap => {
+             if(!snap.exists()) return;
+             const m = snap.val();
+             const div = document.createElement('div');
+             div.id = `adm-msg-${snap.key}`;
+             div.className = `flex flex-col mb-2 ${m.sender === 'admin' ? 'items-end' : 'items-start'}`;
+             // Safely encoding logic implemented via native text node injections implicitly
+             div.innerHTML = `<div class="msg-bubble ${m.sender === 'admin' ? 'msg-admin' : 'msg-user'}">${m.text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}<span class="msg-time">${new Date(m.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span></div>`;
+             
+             requestAnimationFrame(() => {
+                 container.appendChild(div);
+                 container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' }); // Elegant anchor mechanism
+             });
+         }));
+
+         activeChatListeners.push(onChildChanged(chatRef, snap => {
+             if(!snap.exists()) return;
+             const m = snap.val();
+             const div = document.getElementById(`adm-msg-${snap.key}`);
+             if(div) {
+                 requestAnimationFrame(() => {
+                     div.className = `flex flex-col mb-2 ${m.sender === 'admin' ? 'items-end' : 'items-start'}`;
+                     div.innerHTML = `<div class="msg-bubble ${m.sender === 'admin' ? 'msg-admin' : 'msg-user'}">${m.text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}<span class="msg-time">${new Date(m.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span></div>`;
+                 });
+             }
+         }));
+
+         activeChatListeners.push(onChildRemoved(chatRef, snap => {
+             const div = document.getElementById(`adm-msg-${snap.key}`);
+             if(div) requestAnimationFrame(() => div.remove());
+         }));
+      },
+      sendMessage: async () => {
+         const input = document.getElementById('supportInput');
+         const btn = document.getElementById('supportSendBtn');
+         const text = input.value.trim();
+         const userId = window.currentChatUserId;
+
+         if (!text || !userId) return;
+         
+         input.disabled = true; btn.disabled = true;
+         btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i>';
+
+         try {
+             const t = Date.now();
+             await push(ref(db, `support_chats/${userId}/messages`), { text, sender: 'admin', timestamp: t });
+             await update(ref(db, `support_chats/${userId}`), { lastActivity: t, unreadUser: true });
+             
+             input.value = '';
+             Security.log('SUPPORT', 'REPLY', 'Admin', `Outbound package delivered to ${userId}`);
+         } catch(e) { 
+             App.toast('Network rejection on dispatch.', 'error'); 
+         } finally {
+             if(input) input.disabled = false;
+             if(btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i>'; }
+             if(input) input.focus();
+         }
+      }
+    };
+
+    // ================== SECURITY MODULE (Advanced Audit Log) ==================
+    window.Security = {
+      cachedLogs:[],
+      filteredLogs:[],
+      currentPage: 1,
+      itemsPerPage: 12, // Increased density
+      
+      log: async (type, action, identity, desc) => { 
+        try { 
+            const entry = { timestamp: Date.now(), type, action, identity, desc };
+            await push(ref(db, 'audit'), entry); 
+        } catch(e) { /* silent fail */ }
+      },
+      load: async () => {
+        // LOCAL FIRST
+        const cached = await IDB.get('audit');
+        if (cached) {
+            Security.cachedLogs = Object.values(cached).sort((a,b) => b.timestamp - a.timestamp);
+            requestAnimationFrame(() => Security.applyFilter(true));
+        }
+
+        // FIREBASE SYNC
+        const q = query(ref(db, 'audit'));
+        const unsub = onValue(q, snapshot => {
+          if(!snapshot.exists()) {
+             document.getElementById('auditFeed').innerHTML = '<tr><td colspan="3" class="text-center p-6 text-slate-500 font-bold text-xs">Waiting for telemetry arrays...</td></tr>';
+             document.getElementById('securityList').innerHTML = '<tr><td colspan="5" class="text-center p-8 text-slate-500 font-bold text-sm">Central log frame empty.</td></tr>';
+             IDB.set('audit', {}); return;
+          }
+          
+          const val = snapshot.val();
+          IDB.set('audit', val);
+          Security.cachedLogs = Object.values(val).sort((a,b) => b.timestamp - a.timestamp);
+          
+          requestAnimationFrame(() => Security.applyFilter(true));
+        }, handleDBError);
+        activeDBListeners.push(unsub);
+      },
+      applyFilter: (skipPageReset = false) => {
+         const filter = document.getElementById('auditFilter') ? document.getElementById('auditFilter').value : 'ALL';
+         const search = (document.getElementById('auditSearch') ? document.getElementById('auditSearch').value : '').toLowerCase();
+         
+         Security.filteredLogs = Security.cachedLogs.filter(a => {
+             const matchType = filter === 'ALL' || a.type === filter;
+             const matchSearch = search === '' || (a.action||'').toLowerCase().includes(search) || (a.identity||'').toLowerCase().includes(search) || (a.desc||'').toLowerCase().includes(search);
+             return matchType && matchSearch;
+         });
+         
+         if(!skipPageReset) Security.currentPage = 1;
+
+         // Feed render
+         let fHtml = '';
+         Security.cachedLogs.slice(0, 6).forEach((a) => {
+             const time = new Date(a.timestamp).toLocaleTimeString('en-US', {hour12: false});
+             let color = 'text-[#0ea5e9] bg-[#0ea5e9]/10 border-[#0ea5e9]/30';
+             if(a.type === 'AUTH') color = 'text-emerald-400 bg-emerald-400/10 border-emerald-400/30';
+             if(a.type === 'SECURITY' || a.action === 'LOCKDOWN') color = 'text-red-400 bg-red-400/10 border-red-400/30';
+             if(a.type === 'USER') color = 'text-[#8b5cf6] bg-[#8b5cf6]/10 border-[#8b5cf6]/30';
+             if(a.type === 'CONTENT') color = 'text-amber-400 bg-amber-400/10 border-amber-400/30';
+             fHtml += `
+               <tr class="hover:bg-slate-800/30 transition border-b border-slate-800/50" title="${a.desc || ''}">
+                 <td class="p-3 pl-4 text-slate-400 font-mono text-[11px] font-semibold">${time}</td>
+                 <td class="p-3 text-white text-[11.5px] font-bold"><span class="px-2 py-0.5 rounded border ${color} mr-2 text-[9px] uppercase tracking-wider">${a.type}</span> ${a.action}</td>
+                 <td class="p-3 text-slate-300 text-[11px] truncate max-w-[130px] font-medium" title="${a.identity}">${a.identity || 'System Runtime'}</td>
+               </tr>
+             `;
+         });
+         const elFeed = document.getElementById('auditFeed');
+         if(elFeed) elFeed.innerHTML = fHtml;
+
+         Security.renderPage();
+      },
+      renderPage: () => {
+         const total = Security.filteredLogs.length;
+         const totalPages = Math.max(1, Math.ceil(total / Security.itemsPerPage));
+         if(Security.currentPage > totalPages) Security.currentPage = totalPages;
+         
+         const pgInfo = document.getElementById('auditPageInfo');
+         if(pgInfo) pgInfo.innerHTML = `Render Window: <span class="text-white">Page ${Security.currentPage} of ${totalPages}</span> <span class="text-slate-500 mx-2">|</span> Engine contains <span class="text-white">${total}</span> blocks`;
+         
+         const start = (Security.currentPage - 1) * Security.itemsPerPage;
+         const end = start + Security.itemsPerPage;
+         const pageData = Security.filteredLogs.slice(start, end);
+         
+         let lHtml = '';
+         pageData.forEach((a) => {
+            let color = 'text-[#0ea5e9] bg-[#0ea5e9]/10 border-[#0ea5e9]/30';
+            if(a.type === 'AUTH') color = 'text-emerald-400 bg-emerald-400/10 border-emerald-400/30';
+            if(a.type === 'SECURITY' || a.action === 'LOCKDOWN') color = 'text-red-400 bg-red-400/10 border-red-400/30';
+            if(a.type === 'USER') color = 'text-[#8b5cf6] bg-[#8b5cf6]/10 border-[#8b5cf6]/30';
+            if(a.type === 'CONTENT') color = 'text-amber-400 bg-amber-400/10 border-amber-400/30';
+
+            lHtml += `
+              <tr class="hover:bg-slate-800/40 border-b border-slate-800/50 transition">
+                <td class="p-3 pl-5 text-slate-400 w-44 font-semibold">${new Date(a.timestamp).toLocaleString()}</td>
+                <td class="p-3 w-32"><span class="px-2.5 py-1 rounded-md border ${color} font-bold text-[10px] tracking-wider uppercase">${a.type}</span></td>
+                <td class="p-3 text-white w-36 font-extrabold text-[12px]">${a.action}</td>
+                <td class="p-3 text-slate-300 w-48 truncate max-w-[160px] font-medium text-[12px]">${a.identity || 'System Instance'}</td>
+                <td class="p-3 text-slate-400 text-[12px] leading-snug">${a.desc || ''}</td>
+              </tr>
+            `;
+         });
+         
+         const secList = document.getElementById('securityList');
+         if(secList) secList.innerHTML = lHtml || '<tr><td colspan="5" class="text-center p-8 text-slate-500 font-bold text-sm">Arrays return empty for current configuration.</td></tr>';
+      },
+      nextPage: () => {
+          const totalPages = Math.max(1, Math.ceil(Security.filteredLogs.length / Security.itemsPerPage));
+          if(Security.currentPage < totalPages) { Security.currentPage++; Security.renderPage(); }
+      },
+      prevPage: () => {
+          if(Security.currentPage > 1) { Security.currentPage--; Security.renderPage(); }
+      },
+      exportCSV: () => {
+          if(Security.filteredLogs.length === 0) return App.toast('Array empty. Output aborted.', 'warning');
+          
+          let csv = "Timestamp,Type,Action,Identity,Description\n";
+          Security.filteredLogs.forEach(l => {
+              csv += `"${new Date(l.timestamp).toISOString()}","${l.type}","${l.action}","${l.identity || ''}","${(l.desc||'').replace(/"/g, '""')}"\n`;
+          });
+          
+          const dataStr = "data:text/csv;charset=utf-8," + encodeURIComponent(csv);
+          const node = document.createElement('a');
+          node.setAttribute("href", dataStr);
+          node.setAttribute("download", "System_Audit_" + new Date().toISOString().split('T')[0] + ".csv");
+          document.body.appendChild(node);
+          node.click();
+          node.remove();
+          
+          App.toast('Compiled reports extracted successfully.', 'success');
+          Security.log('SECURITY', 'EXPORT', 'Admin', 'Initiated CSV array dump.');
+      }
+    };
+
+    // ================== ANALYTICS MODULE ==================
+    window.Analytics = {
+      render: () => {
+        const articles = Object.values(window.cachedContent || {}).filter(c => c.status === 'Published');
+        
+        let labels =[]; let viewData =[]; let likeData =[];
+        let totalViews = 0; let totalEngagement = 0;
+
+        if (articles.length === 0) {
+            labels =['Awaiting Inputs']; viewData =[0]; likeData =[0];
+        } else {
+            articles.sort((a,b) => (b.views || 0) - (a.views || 0));
+            articles.forEach(a => {
+                totalViews += (a.views || 0);
+                totalEngagement += (a.likes || 0) + (a.shares || 0) + (a.comments ? Object.keys(a.comments).length : 0);
+            });
+            const top = articles.slice(0, 7);
+            labels = top.map(a => a.title ? (a.title.length > 15 ? a.title.substring(0,15)+'...' : a.title) : 'Untitled');
+            viewData = top.map(a => a.views || 0);
+            likeData = top.map(a => a.likes || 0);
+        }
+
+        const now = Date.now(); 
+        const fourteenDays = 14 * 24 * 60 * 60 * 1000;
+        const usersArr = Object.values(window.cachedUsers || {});
+        const activeUsers = usersArr.filter(u => u.lastLogin && (now - u.lastLogin) < fourteenDays).length;
+        const inactiveUsers = usersArr.length - activeUsers;
+
+        if(document.getElementById('stat-total-views')) document.getElementById('stat-total-views').innerText = totalViews.toLocaleString();
+        if(document.getElementById('stat-total-eng')) document.getElementById('stat-total-eng').innerText = totalEngagement.toLocaleString();
+        if(document.getElementById('stat-active-users')) document.getElementById('stat-active-users').innerText = activeUsers.toLocaleString();
+
+        renderChart('analyticsChart', 'bar', {
+          labels: labels,
+          datasets:[
+            { label: 'Network Views', data: viewData, backgroundColor: '#0ea5e9', borderRadius: 6 },
+            { label: 'Organic Likes', data: likeData, backgroundColor: '#ec4899', borderRadius: 6 }
+          ]
+        }, { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: {font:{family: 'Inter', weight: 600}, color:'#94a3b8'} }, y: { grid: { color: 'rgba(30, 41, 59, 0.4)', drawBorder: false }, ticks: {font:{family: 'Inter', weight: 600}, color:'#94a3b8'}, beginAtZero: true } } });
+
+        renderChart('userDistChart', 'doughnut', {
+           labels:['Active Vectors (14d)', 'Dormant Links'],
+           datasets: [{ data:[activeUsers, inactiveUsers], backgroundColor:['#10b981', '#1e293b'], borderWidth: 0, hoverOffset: 4 }]
+        }, { cutout: '78%', plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', font: {family:'Inter', weight: 700}, padding: 20 } } } });
+      }
+    };
+
+    window.Health = {
+      render: () => {
+        const opts = { cutout: '82%', plugins: { tooltip: { enabled: false } }, rotation: -90, circumference: 180 };
+        renderChart('gaugeMem', 'doughnut', { datasets: [{ data:[62, 38], backgroundColor:['#0ea5e9', '#1e293b'], borderWidth: 0, borderRadius: 2 }] }, opts);
+        renderChart('gaugeDisk', 'doughnut', { datasets:[{ data:[28, 72], backgroundColor:['#ec4899', '#1e293b'], borderWidth: 0, borderRadius: 2 }] }, opts);
+        renderChart('gaugeNet', 'doughnut', { datasets: [{ data:[45, 55], backgroundColor:['#10b981', '#1e293b'], borderWidth: 0, borderRadius: 2 }] }, opts);
+        renderChart('gaugeDB', 'doughnut', { datasets: [{ data:[12, 88], backgroundColor:['#f59e0b', '#1e293b'], borderWidth: 0, borderRadius: 2 }] }, opts);
+      }
+    };
+
+    // ================== CONFIGURATION MODULE ==================
+    window.Config = {
+      load: async () => {
+         // LOCAL FIRST
+         const cached = await IDB.get('config');
+         if(cached) {
+            requestAnimationFrame(() => Config.renderConfig(cached));
+         }
+
+         onValue(ref(db, 'config'), snap => {
+            if(snap.exists()) {
+               const c = snap.val();
+               IDB.set('config', c);
+               requestAnimationFrame(() => Config.renderConfig(c));
+            }
+         });
+      },
+      renderConfig: (c) => {
+           const elReg = document.getElementById('cfgReg');
+           const elCom = document.getElementById('cfgComm');
+           const elMaint = document.getElementById('cfgMaint');
+           const elMaintMsg = document.getElementById('cfgMaintMsg');
+           const qaMaintBtn = document.getElementById('btn-quick-maint');
+
+           if(elReg) elReg.checked = c.registrationEnabled !== false;
+           if(elCom) elCom.checked = c.commentsEnabled !== false;
+           if(elMaint) elMaint.checked = c.maintenanceMode === true;
+           if(elMaintMsg) elMaintMsg.value = c.maintenanceMessage || '';
+           
+           if(qaMaintBtn) {
+               if(c.maintenanceMode) {
+                   qaMaintBtn.innerHTML = '<i class="fa-solid fa-shield-halved mr-1.5 animate-pulse"></i> Firewall Active';
+                   qaMaintBtn.className = 'btn px-3 py-3 rounded-xl bg-red-600/20 text-red-400 border border-red-600/50 text-xs font-black transition text-center truncate shadow-sm';
+               } else {
+                   qaMaintBtn.innerHTML = '<i class="fa-solid fa-shield-halved mr-1.5"></i> Maint: OFF';
+                   qaMaintBtn.className = 'btn px-3 py-3 rounded-xl bg-slate-800 text-slate-400 hover:bg-slate-700 border border-slate-700 text-xs font-bold transition text-center truncate shadow-sm';
+               }
+           }
+      },
+      save: async () => { 
+         const btn = document.getElementById('btnSaveConfig');
+         const ogText = btn.innerHTML;
+         
+         const reg = document.getElementById('cfgReg').checked;
+         const com = document.getElementById('cfgComm').checked;
+         const maint = document.getElementById('cfgMaint').checked;
+         const maintMsg = document.getElementById('cfgMaintMsg').value;
+
+         btn.disabled = true;
+         btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Implementing...';
+
+         try {
+             await set(ref(db, 'config'), { registrationEnabled: reg, commentsEnabled: com, maintenanceMode: maint, maintenanceMessage: maintMsg });
+             App.toast('Logic parameters synchronized dynamically.', 'success'); 
+             window.Security.log('SYSTEM', 'CONFIG_UPDATE', 'Admin', 'Overrode system core thresholds'); 
+         } catch(e) { 
+             handleDBError(e); 
+         } finally {
+             if(btn) { btn.disabled = false; btn.innerHTML = ogText; }
+         }
+      },
+      toggleMaintenance: async () => {
+        try {
+            const configRef = ref(db, 'config');
+            const snap = await get(configRef);
+            const currentConfig = snap.exists() ? snap.val() : {};
+            const newState = !currentConfig.maintenanceMode;
+            await update(configRef, { maintenanceMode: newState });
+            App.toast(newState ? 'Emergency Firewall Activated' : 'System Returned to Public', newState ? 'warning' : 'success');
+            window.Security.log('SYSTEM', 'MAINTENANCE', 'Admin', newState ? 'Invoked strict lock down' : 'Disengaged locks');
+        } catch(e) { handleDBError(e); }
+      }
+    };
+
+    // ================== BACKUP MODULE ==================
+    window.Backup = { 
+        export: async () => {
+            const btn = document.getElementById('btnExportDB');
+            const ogText = btn.innerHTML;
+            btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Compiling...';
+            App.toast('Compiling master JSON hash...', 'info');
+            
+            try {
+                const snap = await get(ref(db, '/'));
+                if(!snap.exists()) {
+                    App.toast('Structure void. Export ignored.', 'warning');
+                    btn.disabled = false; btn.innerHTML = ogText;
+                    return;
+                }
+                
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(snap.val()));
+                const node = document.createElement('a');
+                node.setAttribute("href", dataStr);
+                node.setAttribute("download", "Gospel_Prophecy_SystemState_" + new Date().toISOString().split('T')[0] + ".json");
+                document.body.appendChild(node);
+                node.click();
+                node.remove();
+                
+                Security.log('SYSTEM', 'BACKUP_EXPORT', 'Admin', 'Secured JSON payload generation');
+                App.toast('Snapshot delivered correctly.', 'success');
+            } catch (e) { 
+                handleDBError(e); 
+            } finally {
+                if(btn) { btn.disabled = false; btn.innerHTML = ogText; }
+            }
+        },
+        import: (event) => {
+            const file = event.target.files[0];
+            if(!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const json = JSON.parse(e.target.result);
+                    if(confirm("CRITICAL INJECTION: Overwrite absolute system memory with this file vector? Action is permanent.")) {
+                        App.toast('Executing destructive restore...', 'warning');
+                        await set(ref(db, '/'), json);
+                        App.toast('Database parameters overwritten successfully. Rebooting...', 'success');
+                        Security.log('SYSTEM', 'BACKUP_IMPORT', 'Admin', 'Executed total memory wipe & rewrite');
+                        setTimeout(() => window.location.reload(), 2000);
+                    }
+                } catch(err) {
+                    App.toast('Parsing failed. File format rejected.', 'error');
+                }
+            };
+            reader.readAsText(file);
+        }
+    };
+
+    function initDashboardChart() {
+      requestAnimationFrame(() => {
+          renderChart('healthGauge', 'doughnut', { datasets:[{ data:[34, 66], backgroundColor:['#10b981', '#0f172a'], borderWidth: 0, borderRadius: 3 }] }, { cutout: '82%', plugins: { tooltip: { enabled: false } }, rotation: -90, circumference: 180 });
+      });
+    }
+
+    // ==========================================
+    // INITIALIZATION (Async Boot Sequence)
+    // ==========================================
+    async function initializeAppDirectly() {
+      // Step 1: Init Local Fast Cache
+      await IDB.init();
+
+      // Step 2: Trigger Modules (Load local first, then sync Firebase)
+      window.Users.load();
+      window.Content.load();
+      window.About.load();
+      window.Security.load();
+      window.Config.load();
+      window.Support.loadTickets(); 
+      window.Notifications.initListener(); 
+      
+      // Step 3: Run Background Workers
+      window.Scheduler.init(); 
+      initDashboardChart();
+      
+      App.toast('Secure Admin Handshake Authenticated.', 'success');
+      window.Security.log('AUTH', 'LOGIN', 'Admin', 'Admin Terminal Session Generated');
+    }
+
+    initializeAppDirectly();
+
+  </script>
+</body>
+</html>
